@@ -9,7 +9,7 @@ EasyX 在2020.12.6之前一直不支持Win32控件（据说明年会支持？）
 
 效果：
 ![image](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/scrshot.png)
-
+<br>
 
 这里面用到我之前写的一个AHGraphics.h，详见http://huidong.xyz/?mode=2&id=116
 
@@ -42,10 +42,10 @@ void initgraph_win32(int w = 640, int h = 480, int mode = 0, bool(*WindowProcess
 
 `bool WindowProcess (HWND, UINT, WPARAM, LPARAM, HINSTANCE);`
 
-
+<br>
 这个函数和win32原生的WndProc函数很像，只需要处理你需要的消息，然后返回true或false表示是否需要系统以默认方式来处理该消息即可。
-
-
+<br>
+<br>
 main.cpp 中有完整的示例代码：
 ```
 #include "EasyWin32.h"
@@ -132,8 +132,11 @@ int main()
 }
 
 ```
-
+<br>
 *注意：*
+
 *不要使用easyx的GetMouseMsg等鼠标相关函数*
+
 *不要使用SetWorkingImage(NULL);*
+
 *不要使用GetHWnd()，请使用GetHWnd_win32()*
