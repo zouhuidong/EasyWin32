@@ -35,7 +35,9 @@ void initgraph_win32(int w = 640, int h = 480, int mode = 0, bool(*WindowProcess
 ```
 
 正如上述代码所示，`main`函数中，在`initgraph_win32()`之后，就不要写代码了，因为它是阻塞的。
+
 参数中的`WndProc`是函数名，表示用来处理窗口消息的函数，它的函数类型和参数必须是这样：
+
 `bool WindowProcess (HWND, UINT, WPARAM, LPARAM, HINSTANCE);`
 
 这个函数和win32原生的WndProc函数很像，只需要处理你需要的消息，然后返回true或false表示是否需要系统以默认方式来处理该消息即可。
