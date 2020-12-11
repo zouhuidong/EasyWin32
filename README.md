@@ -12,7 +12,7 @@ EasyX 在2020.12.6之前一直不支持Win32控件（据说明年会支持？）
 
 <br>
 
-这里面用到我之前写的一个AHGraphics.h，详见http://huidong.xyz/?mode=2&id=116
+这里面用到我之前写的一个AHGraphics，详见 https://github.com/zouhuidong/AHGraphics 或 http://huidong.xyz/?mode=2&id=116
 
 
 ## 使用示例
@@ -53,7 +53,6 @@ void initgraph_win32(int w = 640, int h = 480, int mode = 0, bool(*WindowProcess
 main.cpp 中有完整的示例代码：
 ```
 #include "EasyWin32.h"
-#include <conio.h>
 
 #define IDC_EDIT 100
 #define IDC_BTN 101
