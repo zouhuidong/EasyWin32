@@ -140,6 +140,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AHGraphics.cpp" />
     <ClCompile Include="EasyWin32.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

@@ -1,5 +1,15 @@
+///////////////////////////////////////
+//
+//	main.cpp
+//	by huidong <mailkey@yeah.net>
+//	
+//	EasyWin32库使用示例代码
+//
+//	创建时间：2020.12.6
+//	最后修改：2020.12.11
+//
+
 #include "EasyWin32.h"
-#include <conio.h>
 
 #define IDC_EDIT 100
 #define IDC_BTN 101

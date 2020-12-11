@@ -7,7 +7,7 @@
 //	EasyX版本：2020.9.2版
 //
 //	创建时间：2020.12.6
-//	最后修改：2020.12.6
+//	最后修改：2020.12.11
 //
 
 #pragma once
@@ -27,3 +27,6 @@ HWND GetHWnd_win32();
 
 // 强制重绘窗口（正常在WM_PAINT消息内绘图不需要使用此函数）
 void Redraw_win32();
+
+// 得到鼠标相对于窗口的位置
+POINT GetMousePoint();
