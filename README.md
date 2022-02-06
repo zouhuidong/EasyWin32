@@ -1,140 +1,68 @@
-# EasyX_Win32Ctrl
-Let easyx lib supports win32 ctrl. 让EasyX库支持Win32控件。
+# EasyWin32
+![License](https://img.shields.io/github/license/zouhuidong/EasyWin32)
+![Downloads](https://img.shields.io/github/downloads/zouhuidong/EasyWin32/total)
+![GitHub Version](https://img.shields.io/github/v/release/zouhuidong/EasyWin32)
 
----
+EasyX 库的 Win32 拓展版：支持多窗口、使用 Win32 控件
 
-EasyX 在2020.12.6之前一直不支持Win32控件（据说明年会支持？），我就写了这样一个库来使使用EasyX的同时使用Win32控件。
+## 编译环境
 
-原理是将EasyX绘制的图像BitBlt到自己创建的win32程序上，这样Win32程序就和EasyX共存了。
+VisualStudio 2022 | EasyX_20220116 | Windows 10
 
-效果：
-![image](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/scrshot.png)
+## 介绍
 
-<br>
+这个库实现了将 EasyX 扩展出多窗口的支持，以及对 Win32 控件的支持。
 
-这里面用到我之前写的一个AHGraphics，详见 https://github.com/zouhuidong/AHGraphics 或 http://huidong.xyz/?mode=2&id=116
+您觉得这不可思议吗？其实背后的原理很简单。
 
+这个拓展库的原理是：创建 Win32 窗口，然后将 EasyX 的绘制内容刷新到 Win32 窗口上，以实现在 Win32 应用上进行 EasyX 绘图。
 
-## 使用示例
+其中使用了我之前写的一个简陋的库 AHGraphics，项目地址：https://github.com/zouhuidong/AHGraphics
 
-创建窗口时，请使用`initgraph_win32()`：
-```
-int main()
-{
-	// 创建一个支持win32控件的图形界面
-	initgraph_win32(640, 480, 0, WndProc);
-	return 0;
-}
-```
+但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，拖慢了多窗口绘图的效率。但是毕竟 EasyX 是面向我们广大初学者的图形库，这一点其实也不那么重要了。
 
-函数原型：
-```
-// 创建支持win32的绘图窗口
-// w,h				窗口大小
-// mode				窗口模式（为0表示隐藏cmd，不为0表示显示cmd）
-// WindowProcess	窗口消息处理函数的指针（bool类型，返回true表示由系统处理该消息，返回false表示系统不需要再处理该消息）
-// strWndTitle		窗口标题
-void initgraph_win32(int w = 640, int h = 480, int mode = 0, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE) = NULL, LPCTSTR strWndTitle = L"EasyX with Win32");
-```
+各位看官着急试试了吧？那么先上图看看效果吧：
 
-正如上述代码所示，`main`函数中，在`initgraph_win32()`之后，就不要写代码了，因为它是阻塞的。
+![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/2.png)
 
-参数中的`WndProc`是函数名，表示用来处理窗口消息的函数，它的函数类型和参数必须是这样：
+![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/3.png)
 
-`bool WindowProcess (HWND, UINT, WPARAM, LPARAM, HINSTANCE);`
+图片对应的示例程序可以在 samples 文件夹中找到，包括源码和可执行程序，源码中的注释除了 EasyX 绘图函数的调用之外都写的比较详细了。
 
-<br>
+## 配置此库
 
-这个函数和win32原生的WndProc函数很像，只需要处理你需要的消息，然后返回true或false表示是否需要系统以默认方式来处理该消息即可。
+配置此库很简单，只需要将 lib 文件夹中的所有文件都复制到您的项目目录下，然后添加到您的项目中即可。（确保您安装了 EasyX 图形库哦，其官网 https://easyx.cn ）
 
-<br>
-<br>
+在程序中包含头文件 `EasyWin32.h` 来使用此库，并且此库使用了命名空间 `EasyWin32`。
 
-main.cpp 中有完整的示例代码：
-```
+一个最简单的完整示例：
+```cpp
 #include "EasyWin32.h"
-
-#define IDC_EDIT 100
-#define IDC_BTN 101
-
-HWND hEdit;
-HWND hBtn;
-
-wchar_t str[512] = L"Hello, EasyX.";
-
-bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
-{
-	switch (msg)
-	{
-	case WM_CREATE:
-
-		// 创建一个输入框，一个按钮
-		hEdit = CreateWindow(L"edit", L"Edit at here.",
-			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
-			130, 50, 200, 20,
-			hwnd, (HMENU)IDC_EDIT, hInstance, NULL);
-
-		hBtn = CreateWindow(L"button", L"Click Me!",
-			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
-			330, 50, 100, 20,
-			hwnd, (HMENU)IDC_BTN, hInstance, NULL);
-
-		// 在这里设置绘图属性
-		setbkcolor(WHITE);
-		setlinecolor(BLACK);
-		setfillcolor(BLUE);
-		settextcolor(GREEN);
-		settextstyle(32, 0, L"system");
-
-		break;
-
-	case WM_PAINT:
-
-		// 随便画点什么
-		cleardevice();
-		setlinestyle(0, 5);
-		line(0, 0, 300, 100);
-		line(0, 0, getwidth(), getheight());
-		fillrectangle(200,200,600,400);
-		outtextxy(130, 150, str);
-
-		break;
-
-	case WM_COMMAND:
-
-		switch (LOWORD(wParam))
-		{
-
-		// 按下按钮
-		case IDC_BTN:
-
-			// 得到输入框文本并强制重绘
-			GetWindowText(hEdit, str, 512);
-			Redraw_win32();
-
-			break;
-		}
-
-		break;
-
-	default:
-		// 需要系统来处理此消息
-		return true;
-		break;
-	}
-
-	// 已经处理过消息，无需系统再处理
-	return false;
-}
+#include <conio.h>
 
 int main()
 {
-	// 创建一个支持win32控件的图形界面
-	initgraph_win32(640, 480, 0, WndProc);
+	EasyWin32::initgraph_win32();			// 初始化窗口
+
+	outtextxy(20, 20, L"Hello EasyWin32");	// 绘制文本
+	
+	EasyWin32::FlushDrawing();				// EasyWin32 默认使用双缓冲，此处输出缓冲
+	EasyWin32::EnforceRedraw();				// 在顺序代码结构下，需要发送强制重绘消息
+	
+	EasyWin32::init_end();					// 阻塞
+	
+	EasyWin32::closegraph_win32();			// 关闭窗口
 	return 0;
 }
-
 ```
+
+## 开始使用
+
+该库支持您使用顺序代码结构和响应式代码结构。
+
+
+
+
 
 <br>
 
