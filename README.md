@@ -37,7 +37,7 @@ VisualStudio 2022 | EasyX_20220116 | Windows 10
 
 在程序中包含头文件 `EasyWin32.h` 来使用此库，并且此库使用了命名空间 `EasyWin32`。
 
-一个最简单的完整示例：
+一个最简单的完整示例（位于 ./Samples/Start）：
 ```cpp
 #include "EasyWin32.h"
 #include <conio.h>
@@ -47,24 +47,30 @@ int main()
 	EasyWin32::initgraph_win32();			// 初始化窗口
 
 	outtextxy(20, 20, L"Hello EasyWin32");	// 绘制文本
-	
-	EasyWin32::FlushDrawing();				// EasyWin32 默认使用双缓冲，此处输出缓冲
-	EasyWin32::EnforceRedraw();				// 在顺序代码结构下，需要发送强制重绘消息
-	
-	EasyWin32::init_end();					// 阻塞
-	
+
+	FLUSH_DRAW();							// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+
+	_getch();								// 按任意键继续
+
 	EasyWin32::closegraph_win32();			// 关闭窗口
 	return 0;
 }
+
 ```
 
 ## 开始使用
 
-该库支持您使用顺序代码结构和响应式代码结构。
+该库支持您使用顺序代码结构和 Win32 消息派发的代码结构。
 
+顺序代码结构的具体例子：https://github.com/zouhuidong/EasyWin32/blob/main/samples/Sample2/main.cpp
 
+Win32 消息派发的代码结构，其对应的具体例子：https://github.com/zouhuidong/EasyWin32/blob/main/samples/Sample1/main.cpp
 
+例子中对 EasyWin32 的调用做了详细的说明。
 
+**两种代码结构的显著区别**
+
+如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，
 
 <br>
 
