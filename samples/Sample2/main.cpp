@@ -29,7 +29,7 @@ int main()
 		// 若窗口 1 还存在（未被关闭）
 		if (EasyWin32::isAliveWindow(hWnd1))
 		{
-			// 对窗口 1 绘制
+			// 设置窗口 1 为目标绘图窗口
 			EasyWin32::SetWorkingWindow(hWnd1);
 
 			// 绘制内容：EasyX 官方示例“字符阵”（简化）
@@ -46,9 +46,8 @@ int main()
 				}
 			}
 
-			// EasyWin32 默认使用双缓冲，此处输出缓冲（请勿使用 FlushBatchDraw 系列函数）
-			EasyWin32::FlushDrawing();
-			EasyWin32::EnforceRedraw();	// 在顺序代码结构下，需要发送强制重绘消息
+			// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+			FLUSH_DRAW();
 		}
 
 		// 窗口 2
@@ -81,8 +80,7 @@ int main()
 				}
 			}
 
-			EasyWin32::FlushDrawing();
-			EasyWin32::EnforceRedraw();
+			FLUSH_DRAW();
 		}
 
 		// 若所有窗口都被关闭，则结束程序
@@ -92,7 +90,7 @@ int main()
 		}
 
 		// 降低 CPU 占用
-		if(rand() % 777 == 0)
+		if (rand() % 777 == 0)
 			Sleep(1);
 	}
 
