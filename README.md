@@ -22,15 +22,13 @@ EasyX 库的 Win32 拓展版：解锁多窗口（同时创建多个绘图窗口�
 
 这个库实现了 EasyX 创建多窗口，以及对 Win32 控件的支持。
 
-您觉得这不可思议吗？其实背后的原理很简单。
-
 这个拓展库的原理是：创建 Win32 窗口，然后将 EasyX 的绘制内容刷新到 Win32 窗口上，以实现在 Win32 应用上进行 EasyX 绘图。
 
 其中使用了我之前写的一个简陋的库 AHGraphics，项目地址：https://github.com/zouhuidong/AHGraphics
 
-但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，拖慢了多窗口绘图的效率。但是 EasyX 之所以 Easy，也肯定没必要搞那么复杂，所以这点小事算不了什么。
+但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，拖慢了多窗口绘图的效率，不过这也是 EasyX 之 Easy 所在。
 
-各位看官着急试试了吧？那么先上图看看效果吧：
+各位看官着急试试了吗？那么先上图看看效果吧：
 
 ![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/2.png)
 
