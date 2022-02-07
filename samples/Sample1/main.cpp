@@ -37,41 +37,34 @@ bool WndProc1(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 			330, 50, 100, 20,
 			hwnd, (HMENU)IDC_BTN1, hInstance, NULL);
 
-		EasyWin32::SetWorkingWindow(hwnd);			// 设置绘图窗口为自己
-		if (EasyWin32::GetHWnd_win32() == hwnd)		// 判断是否成功获取当前绘图权
-		{
-			EasyWin32::ReadyToDraw();				// 每次进行绘图操作前都要调用此函数
+		BEGIN_DRAW(hwnd);	// 使用此宏表示设置自己为目标绘图窗口，并开始一段绘图任务
 
-			// 绘图状态设置
-			setbkcolor(RGB(250, 250, 250));
-			setbkmode(TRANSPARENT);
-			setlinecolor(BLACK);
-			setfillcolor(BLUE);
-			settextcolor(BLACK);
-			settextstyle(32, 0, L"system");
+		// 绘图状态设置
+		setbkcolor(RGB(250, 250, 250));
+		setbkmode(TRANSPARENT);
+		setlinecolor(BLACK);
+		setfillcolor(BLUE);
+		settextcolor(BLACK);
+		settextstyle(32, 0, L"system");
 
-			// EasyWin32 默认使用双缓冲，此处输出缓冲（请勿使用 FlushBatchDraw 系列函数）
-			EasyWin32::FlushDrawing();
-		}
+		// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+		// 注意：一段绘图任务结束，必须以此宏结尾（BEGIN_DRAW 和 END_DRAW 必须连用）
+		END_DRAW();
 
 		break;
 
 	case WM_PAINT:
 
-		EasyWin32::SetWorkingWindow(hwnd);
-		if (EasyWin32::GetHWnd_win32() == hwnd)
-		{
-			EasyWin32::ReadyToDraw();
+		BEGIN_DRAW(hwnd);
 
-			cleardevice();
-			setlinestyle(0, 5);
-			setlinecolor(LIGHTBLUE);
-			fillcircle(100, getheight() - 100, 80);
-			fillrectangle(getwidth() - 170, getheight() - 170, getwidth() - 30, getheight() - 30);
-			outtextxy(130, 150, str);
+		cleardevice();
+		setlinestyle(0, 5);
+		setlinecolor(LIGHTBLUE);
+		fillcircle(100, getheight() - 100, 80);
+		fillrectangle(getwidth() - 170, getheight() - 170, getwidth() - 30, getheight() - 30);
+		outtextxy(130, 150, str);
 
-			EasyWin32::FlushDrawing();
-		}
+		END_DRAW();
 
 		break;
 
@@ -84,13 +77,9 @@ bool WndProc1(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 			// 得到输入框文本
 			GetWindowText(hEdit, str, 512);
 
-			// 设置绘图窗口为自己
-			EasyWin32::SetWorkingWindow(hwnd);
-			if (EasyWin32::GetHWnd_win32() == hwnd)
-			{
-				// 强制重绘
-				EasyWin32::EnforceRedraw();
-			}
+			BEGIN_DRAW(hwnd);
+			EasyWin32::EnforceRedraw();	// 强制重绘
+			END_DRAW();
 
 			break;
 		}
@@ -161,17 +150,13 @@ bool WndProc3(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		break;
 
 	case WM_PAINT:
-		EasyWin32::SetWorkingWindow(hwnd);
-		if (EasyWin32::GetHWnd_win32() == hwnd)
-		{
-			EasyWin32::ReadyToDraw();
+		BEGIN_DRAW(hwnd);
 
-			// 设置背景色
-			setbkcolor(RGB(240, 240, 240));
-			cleardevice();
+		// 设置背景色
+		setbkcolor(RGB(240, 240, 240));
+		cleardevice();
 
-			EasyWin32::FlushDrawing();
-		}
+		END_DRAW();
 		break;
 
 	default: return true; break;
@@ -201,24 +186,20 @@ bool WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		break;
 
 	case WM_PAINT:
-		EasyWin32::SetWorkingWindow(hwnd);
-		if (EasyWin32::GetHWnd_win32() == hwnd)
-		{
-			EasyWin32::ReadyToDraw();
+		BEGIN_DRAW(hwnd);
 
-			// 设置背景色
-			setbkcolor(RGB(240, 240, 240));
-			cleardevice();
+		// 设置背景色
+		setbkcolor(RGB(240, 240, 240));
+		cleardevice();
 
-			// 在底部显示 "EasyX"
-			settextcolor(BLUE);
-			setbkmode(TRANSPARENT);
-			settextstyle(72, 0, L"system");
-			LPCTSTR str = L"EasyX";
-			outtextxy((getwidth() - textwidth(str)) / 2, getheight() - 100, str);
+		// 在底部显示 "EasyX"
+		settextcolor(BLUE);
+		setbkmode(TRANSPARENT);
+		settextstyle(72, 0, L"system");
+		LPCTSTR str = L"EasyX";
+		outtextxy((getwidth() - textwidth(str)) / 2, getheight() - 100, str);
 
-			EasyWin32::FlushDrawing();
-		}
+		END_DRAW();
 		break;
 
 	case WM_COMMAND:
