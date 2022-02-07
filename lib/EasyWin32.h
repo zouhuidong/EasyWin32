@@ -4,10 +4,10 @@
 //	基于 EasyX 图形库的 Win32 控件支持库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.0
+//	版　　本：Ver 2.1
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	创建日期：2020.12.06
-//	最后修改：2022.02.06
+//	最后修改：2022.02.07
 //
 
 #pragma once
@@ -138,17 +138,76 @@ void FlushMouseMsg_win32();
 //
 
 
+////////////****** 绘图操作宏定义 ******////////////
+
+// 空函数
+inline void NullFunc() {}
+
+// 启动一段绘图任务
+#define BEGIN_DRAW(hWnd)\
+	EasyWin32::SetWorkingWindow(hWnd);\
+	if (EasyWin32::GetHWnd_win32() == hWnd)\
+	{\
+		EasyWin32::ReadyToDraw()
+
+// 结束一段绘图任务，并输出绘图缓存（须与 BEGIN_DRAW 连用）
+#define END_DRAW()\
+		EasyWin32::FlushDrawing();\
+	}\
+	EasyWin32::NullFunc()
+
+// 强制输出绘图缓存，不与 BEGIN_DRAW 和 END_DRAW 连用
+#define FLUSH_DRAW()\
+	EasyWin32::FlushDrawing();\
+	EasyWin32::EnforceRedraw()
+
+////////////****** 键盘消息宏定义 ******////////////
+
+// 判断当前活动窗口是否接受到某按键消息
+#define KEY_DOWN(VK_NONAME) (GetForegroundWindow() == EasyWin32::GetHWnd_win32() && (GetAsyncKeyState(VK_NONAME) & 0x8000) ? 1:0)
+
 ////////////****** EasyX 原生函数的宏替换 ******////////////
 
 #define initgraph(w, h)			initgraph_win32(w, h)
 #define closegraph				closegraph_win32
 
-#define BeginBatchDraw
-#define FlushBatchDraw
-#define EndBatchDraw
+#define BeginBatchDraw()
+#define FlushBatchDraw() FLUSH_DRAW()
+#define EndBatchDraw()
 
 // 获取当前绘图窗口句柄
 #define GetHWnd GetHWnd_win32
 
 EASY_WIN32_END
+
+////////////****** 其他 ******////////////
+
+// 常用色彩扩展
+enum COLORS {
+	DARKBLUE = RGB(0x00, 0x00, 0x8B),
+	DARKCYAN = RGB(0x00, 0x8B, 0x8B),
+	DARKGOLDENROD = RGB(0xB8, 0x86, 0x0B),
+	DARKGREEN = RGB(0x00, 0x64, 0x00),
+	DARKRED = RGB(0x8B, 0x00, 0x00),
+	DEEPPINK = RGB(0xFF, 0x14, 0x93),
+	DEEPSKYBLUE = RGB(0x00, 0xBF, 0xFF),
+	FORESTGREEN = RGB(0x22, 0x8B, 0x22),
+	GOLD = RGB(0xFF, 0xD7, 0x00),
+	GRAY = RGB(0x80, 0x80, 0x80),
+	GREENYELLOW = RGB(0xAD, 0xFF, 0x2F),
+	LIGHTPINK = RGB(0xFF, 0xB6, 0xC1),
+	LIGHTSKYBLUE = RGB(0x87, 0xCE, 0xFA),
+	LIGHTYELLOW = RGB(0xFF, 0xFF, 0xE0),
+	ORANGE = RGB(0xFF, 0xA5, 0x00),
+	ORANGERED = RGB(0xFF, 0x45, 0x00),
+	PINK = RGB(0xFF, 0xC0, 0xCB),
+	PURPLE = RGB(0x80, 0x00, 0x80),
+	SKYBLUE = RGB(0x87, 0xCE, 0xEB),
+	SNOW = RGB(0xFF, 0xFA, 0xFA),
+	SPRINGGREEN = RGB(0x00, 0xFF, 0x7F),
+	STEELBLUE = RGB(0x46, 0x82, 0xB4),
+	TOMATO = RGB(0xFF, 0x63, 0x47),
+	WHITESMOKE = RGB(0xF5, 0xF5, 0xF5),
+	YELLOWGREEN = RGB(0x9A, 0xCD, 0x32)
+};
 

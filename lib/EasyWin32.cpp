@@ -11,6 +11,8 @@
 
 EASY_WIN32_BEGIN
 
+////////////****** 全局变量 ******////////////
+
 // 窗口类
 WNDCLASSEX WndClassEx;
 
@@ -28,6 +30,10 @@ std::vector<EasyWindow> vecWindows;
 
 // 系统分辨率
 int sysW = 0, sysH = 0;
+
+HWND hConsole;			// 控制台句柄
+
+////////////****** 函数定义 ******////////////
 
 // 通过句柄获得此窗口在窗口记录表中的索引
 // 未找到返回 -1
@@ -50,12 +56,14 @@ void closegraph_win32(int index)
 {
 	EasyWindow* pWnd = &vecWindows[index];
 
+	// 若待关闭窗口正在绘图，必须等待绘图结束，防止内存越界
+	while (pWnd == pFocusWindow && isBusyDrawing) { Sleep(1); };
 	delete pWnd->pImg;
 	delete pWnd->pBufferImg;
 	pWnd->pImg = NULL;
 	pWnd->pBufferImg = NULL;
 
-	DestroyWindow(pWnd->hWnd);
+	//DestroyWindow(pWnd->hWnd);
 	PostQuitMessage(NULL);
 
 	// 删除此窗口的记录
@@ -123,7 +131,7 @@ bool SetWorkingWindow(HWND hWnd)
 		return false;
 	}
 	pFocusWindow = &vecWindows[index];
-	while (isBusyDrawing) { Sleep(10); };
+	while (isBusyDrawing) { Sleep(1); };
 	SetWorkingImage(pFocusWindow->pBufferImg);
 	return true;
 }
@@ -140,8 +148,8 @@ void ReadyToDraw()
 
 void FlushDrawing()
 {
-	isBusyDrawing = false;
 	*pFocusWindow->pImg = *pFocusWindow->pBufferImg;
+	isBusyDrawing = false;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -155,7 +163,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
 	pWnd = &vecWindows[indexWnd];
-	RECT rctWnd = GetWindowRect(hwnd);		// 窗口矩形信息
+	RECT rctWnd;
+	GetWindowRect(hwnd, &rctWnd);		// 窗口矩形信息
 
 	//** 开始处理窗口消息 **//
 
@@ -211,6 +220,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		pWnd->vecMouseMsg.push_back(msgMouse);
 
 		break;
+
+		// 键盘消息甩锅给控制台，实现对按键消息的支持
+	case WM_KEYDOWN: case WM_KEYUP: case WM_CHAR:
+	/*case WM_IME_KEYDOWN: case WM_IME_KEYUP: case WM_IME_CHAR:*/
+
+		if (pWnd == pFocusWindow)	// 当前窗口得是焦点窗口，才接受此消息
+		{
+			SendMessage(hConsole, msg, wParam, lParam);
+		}
+		break;
+
 	}
 
 	// 若有独立的消息处理函数则调用
@@ -356,20 +376,6 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 		wstrTitle = strWndTitle;
 	}
 
-	// 控制台
-	HWND hConsole = GetConsoleWindow();
-	if (hConsole)
-	{
-		if (!isCmd)
-		{
-			ShowWindow(GetConsoleWindow(), SW_HIDE);
-		}
-		else
-		{
-			ShowWindow(GetConsoleWindow(), SW_NORMAL);
-		}
-	}
-
 	// 获取分辨率
 	if (!sysW)
 	{
@@ -377,9 +383,18 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 		sysH = GetSystemMetrics(SM_CYSCREEN);
 	}
 
+	// 第一次创建窗口
 	if (nWndNum == 0)
 	{
+		// 注册窗口类
 		RegisterWndClass();
+		hConsole = GetConsoleWindow();
+	}
+
+	// 控制台
+	if (hConsole)
+	{
+		ShowWindow(hConsole, isCmd ? SW_NORMAL : SW_HIDE);
 	}
 
 	// 初始化窗口信息
