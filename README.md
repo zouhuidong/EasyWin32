@@ -94,6 +94,14 @@ int main()
 
 ```
 
+窗口过程函数的返回值是布尔类型，标识是否需要系统默认方法处理该消息。
+
+需要注意的是：
+
+1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息。
+
+2. 如果自行处理 WM_CLOSE 消息，则无需编写关闭窗口的代码，但最后函数必须返回 true，否则可能造成内存泄漏。
+
 然后在 `WndProc` 中创建按钮（可以是其他控件，需要运用 Win32 的知识，这里以按钮举例）：
 
 ```cpp
@@ -313,12 +321,31 @@ int main()
 
 代码其实很简单，注释也很详细，这种“顺序代码结构”与上面那种 Win32 式的代码结构最大的区别就是不需要创建 `WndProc`，即窗口过程函数。
 
-<br>
+接下来我为大家剖析这段代码。
 
-*注意：*
+首先，由于创建了两个窗口，那么在主循环的绘图中，您需要分两个 `if` 语句分别判断窗口是否还存在，因为窗口可能被用户关闭。若窗口还存在，才继续绘图。
 
-*不要使用easyx的GetMouseMsg等鼠标相关函数*
+在 `if` 语句内部，首先需要调用 `EasyWin32::SetWorkingWindow()` 来设置当前的绘图窗口，由于是顺序代码结构，不会出现两个绘图任务抢占绘图权的情况，所以不需要使用 `BEGIN_DRAW()` 和 `END_DRAW()` 宏。在设置绘图窗口后，可以尽情绘图，绘图结束后需要调用 `FLUSH_DRAW()` 输出您的绘图缓冲。
 
-*不要使用SetWorkingImage(NULL);*
+需要注意的是，EasyX 原生的 `BeginBatchDraw` 一系列函数都是面向绘图窗口的，也就是说，如果处在 IMAGE 对象内部，`BeginBatchDraw` 系列函数会出错，所以请不要在 EasyWin32 中使用这些函数。但是考虑到兼容性问题，我将他们都重新进行了宏定义，`BeginBatchDraw` 和 `EndBatchDraw` 都将无意义，而 `FlushBatchDraw` 则等同于 `FLUSH_DRAW`。区别于 EasyX，EasyWin32 中的 `BEGIN_DRAW` 和 `END_DRAW` 组成一套，用在 Win32 式代码结构中，表示进行一个绘图任务；而 `FLUSH_DRAW` 用于顺序代码结构，表示完成绘图，并输出绘图缓冲。
 
-*不要使用GetHWnd()，请使用GetHWnd_win32()*
+鼠标消息方面，虽然使用的是 ExMessage 结构，但是目前只提供获取鼠标消息的方法，暂不提供其他类型消息的获取功能（如 EM_KEY, EM_WINDOW 等）。
+
+由于只能获取鼠标消息，故函数名称来自 MOUSEMSG 系列函数，这是旧版 EasyX 中的函数。
+
+按键消息支持直接使用 `_getch` 一系列函数获取。
+
+## 注意事项
+
+一部分需要注意的内容都在“开始使用”中结合例子描述完毕，需要补充的是，由于 EasyWin32 绕开了 EasyX 原生的 `initgraph` 函数，所以在调用需要 `IMAGE` 对象指针的函数时，不可以传入 `NULL`，而需要传入您的窗口的 `IMAGE` 对象指针。诸如以下函数都默认会传入 `IMAGE* pImg = NULL`：
+
+`GetImageBuffer`
+
+`SetWorkingImage`
+
+`GetImageHDC`
+
+等等。
+
+
+
