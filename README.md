@@ -1,8 +1,8 @@
 # EasyWin32
 ![Downloads](https://img.shields.io/github/downloads/zouhuidong/EasyWin32/total)
 ![GitHub Version](https://img.shields.io/github/v/release/zouhuidong/EasyWin32)
-[![Blog](https://img.shields.io/badge/blog-huidong.xyz-green.svg)]({http://huidong.xyz})
-[![EasyX](https://img.shields.io/badge/graphics-EasyX-orange.svg)]({https://easyx.cn})
+[![Blog](https://img.shields.io/badge/blog-huidong.xyz-green.svg)](http://huidong.xyz)
+[![EasyX](https://img.shields.io/badge/graphics-EasyX-orange.svg)](https://easyx.cn)
 
 EasyX 库的 Win32 拓展版：解锁多窗口（同时创建多个绘图窗口）、可以使用 Win32 控件、可以拉伸窗口大小
 
