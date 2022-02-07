@@ -7,7 +7,7 @@ EasyX 库的 Win32 拓展版：解锁多窗口、可以使用 Win32 控件
 
 ## 介绍
 
-这个库实现了将 EasyX 扩展出多窗口的支持，以及对 Win32 控件的支持。
+这个库实现了 EasyX 创建多窗口，以及对 Win32 控件的支持。
 
 您觉得这不可思议吗？其实背后的原理很简单。
 
@@ -15,7 +15,7 @@ EasyX 库的 Win32 拓展版：解锁多窗口、可以使用 Win32 控件
 
 其中使用了我之前写的一个简陋的库 AHGraphics，项目地址：https://github.com/zouhuidong/AHGraphics
 
-但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，拖慢了多窗口绘图的效率。但是毕竟 EasyX 是面向我们广大初学者的图形库，这一点其实也不那么重要了。
+但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，拖慢了多窗口绘图的效率。但是 EasyX 之所以 Easy，也肯定没必要搞那么复杂，所以这点小事算不了什么。
 
 各位看官着急试试了吧？那么先上图看看效果吧：
 
@@ -68,9 +68,140 @@ Win32 消息派发的代码结构，其对应的具体例子：https://github.co
 
 例子中对 EasyWin32 的调用做了详细的说明。
 
-**两种代码结构的显著区别**
+### Win32 消息派发式
 
-如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，
+如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，就像下面这样：
+
+```cpp
+#include "EasyWin32.h"
+
+// 窗口过程函数
+bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
+{
+	switch (msg)
+	{
+	default: return true; break;	// 使用默认方法处理其余消息
+	}
+	return false;
+}
+
+int main()
+{
+	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
+	EasyWin32::init_end();					// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
+	return 0;
+}
+
+```
+
+然后在 `WndProc` 中创建按钮（可以是其他控件，需要运用 Win32 的知识，这里以按钮举例）：
+
+```cpp
+#include "EasyWin32.h"
+
+// 控件 ID
+#define IDC_BTN 100
+
+// 窗口过程函数
+bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
+{
+	switch (msg)
+	{
+	case WM_CREATE:
+
+		// 创建按钮
+		CreateWindow(L"button", L"Button",
+			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
+			200, 100, 100, 60,
+			hwnd, (HMENU)IDC_BTN, hInstance, NULL);
+
+		break;
+	default: return true; break;	// 使用默认方法处理其余消息
+	}
+	return false;
+}
+
+int main()
+{
+	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
+	EasyWin32::init_end();									// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
+	return 0;
+}
+
+```
+
+创建按钮完毕，接下来为其添加按键响应：
+
+```cpp
+#include "EasyWin32.h"
+
+// 控件 ID
+#define IDC_BTN 100
+
+// 存储文本
+wchar_t str[128] = { 0 };
+
+// 窗口过程函数
+bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
+{
+	switch (msg)
+	{
+	case WM_CREATE:
+
+		// 创建按钮
+		CreateWindow(L"button", L"Button",
+			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
+			200, 100, 100, 60,
+			hwnd, (HMENU)IDC_BTN, hInstance, NULL);
+
+		break;
+
+	case WM_PAINT:
+
+		BEGIN_DRAW(hwnd);		// 将绘图窗口设为自己，并启动一次绘图任务
+		setbkcolor(0xf0f0f0);	// 设置背景色
+		settextcolor(BLUE);		// 设置文本色
+		cleardevice();			// 清屏
+		outtextxy(20, 20, str);	// 输出文字
+		END_DRAW();				// 结束此次绘图任务
+
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case IDC_BTN:	// 按下按钮
+
+			BEGIN_DRAW(hwnd);
+			wsprintf(str, L"按下了按钮");
+			
+			// 在非 WM_PAINT 消息区域，如需要立即刷新，需要强制重绘
+			EasyWin32::EnforceRedraw();
+			
+			END_DRAW();
+
+			break;
+		}
+
+	default: return true; break;	// 使用默认方法处理其余消息
+	}
+	return false;
+}
+
+int main()
+{
+	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
+	EasyWin32::init_end();									// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
+	return 0;
+}
+```
+
+执行效果：
+
+![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/4.png)
+
+需要注意的是：在窗口过程函数中绘图，每次绘图操作，无论是设置绘图属性还是绘图，都需要在每次操作前使用 `BEGIN_DRAW(窗口句柄)`，并在每次操作结束时使用 `END_DRAW()`。
+
 
 <br>
 
