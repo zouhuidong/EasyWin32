@@ -156,14 +156,9 @@ MOUSEMSG To_MouseMsg(ExMessage msgEx);
 bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 
 //
-//	鼠标消息相关备注：
+//	鼠标消息兼容旧版 MOUSEMSG，同时支持 ExMessage
+//	但 ExMessage 系列函数暂时只能获取 EM_MOUSE 即鼠标消息
 //
-//	虽然使用的是 ExMessage 结构，但是目前只提供获取鼠标消息的方法。
-//	暂不提供其他类型消息的获取功能（如 EM_KEY, EM_WINDOW 等）
-// 
-//	由于只能获取鼠标消息，故函数名称来自 MOUSEMSG 系列函数，这是旧版 EasyX 中的函数。
-//
-
 
 ////////////****** 绘图操作宏定义 ******////////////
 
