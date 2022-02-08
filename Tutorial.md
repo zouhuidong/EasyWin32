@@ -6,9 +6,9 @@ EasyWin32 相对 EasyX 的新增函数并不多，易于上手。
 
 该库支持您使用顺序代码结构和 Win32 消息派发的代码结构。
 
-顺序代码结构的具体例子：./samples/Sample2/main.cpp
+[顺序代码结构的具体例子](./samples/Sample2/main.cpp)
 
-Win32 消息派发的代码结构，其对应的具体例子：./samples/Sample1/main.cpp
+[Win32 消息派发的代码结构对应的具体例子](./samples/Sample1/main.cpp)
 
 ## Win32 消息派发式
 
@@ -150,7 +150,7 @@ int main()
 
 执行效果：
 
-![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/4.png)
+![示例图片](./screenshot/4.png)
 
 需要注意的是：在窗口过程函数中绘图，每次绘图操作，无论是设置绘图属性还是绘图，都需要在每次操作前使用 `BEGIN_DRAW(窗口句柄)`，并在每次操作结束时使用 `END_DRAW()`。
 
