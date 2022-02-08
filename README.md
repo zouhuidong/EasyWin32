@@ -24,9 +24,9 @@ EasyX 库的 Win32 拓展版：解锁多窗口（同时创建多个绘图窗口�
 
 各位看官着急试试了吗？那么先上图看看效果吧：
 
-![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/2.png)
+![示例图片](./screenshot/2.png)
 
-![示例图片](https://github.com/zouhuidong/EasyX_Win32Ctrl/blob/main/screenshot/3.png)
+![示例图片](./screenshot/3.png)
 
 图片对应的示例程序可以在 samples 文件夹中找到，包括源码和可执行程序，源码内附详细注释。
 
