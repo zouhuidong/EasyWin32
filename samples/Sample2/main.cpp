@@ -57,10 +57,8 @@ int main()
 
 			// 绘制内容：EasyX 官方示例“鼠标操作”（有改动）
 			ExMessage m;
-			if (EasyWin32::MouseHit_win32())
+			if (peekmessage(&m, EM_MOUSE))	// 若成功获取一条鼠标消息
 			{
-				// 获取一条鼠标消息
-				m = EasyWin32::GetMouseMsg_win32();
 				switch (m.message)
 				{
 				case WM_MOUSEMOVE:
