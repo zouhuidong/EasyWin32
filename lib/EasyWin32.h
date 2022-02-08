@@ -1,18 +1,19 @@
 /////////////////////////////////////////////////////////////////////
 //
 //	EasyWin32.h
-//	基于 EasyX 图形库的 Win32 控件支持库
+//	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.1
+//	版　　本：Ver 2.2
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
+//	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.02.07
+//	最后修改：2022.02.08
 //
 
 #pragma once
 
-#include <easyx.h>
+#include <graphics.h>
 #include <vector>
 #include <string>
 
@@ -37,7 +38,6 @@ struct EasyWindow
 
 	bool isSentCreateMsg;	// 是否发送了 WM_CREATE 的消息
 };
-
 
 ////////////****** 窗体相关函数 ******////////////
 
@@ -116,17 +116,44 @@ bool isWindowSizeChanged();
 
 ////////////****** 鼠标消息相关函数 ******////////////
 
+//// MOUSEMSG 式函数
+
 // 检查是否存在鼠标消息
 bool MouseHit_win32();
 
 // 阻塞等待，直到获取到一个新的鼠标消息
 ExMessage GetMouseMsg_win32();
 
-// 获取一个鼠标消息，并立即返回
-bool PeekMouseMsg_win32(ExMessage* pMsg);
+// 获取一个新的鼠标消息，立即返回是否获取成功
+bool PeekMouseMsg_win32(ExMessage* pMsg, bool bRemoveMsg = true);
 
 // 清空鼠标消息
-void FlushMouseMsg_win32();
+void FlushMouseMsgBuffer_win32();
+
+//// ExMessage 式函数
+
+// 阻塞等待，直到获取到一个新消息（暂仅支持鼠标消息 EM_MOUSE）
+ExMessage getmessage_win32(BYTE filter = -1);
+
+// 阻塞等待，直到获取到一个新消息（暂仅支持鼠标消息 EM_MOUSE）
+void getmessage_win32(ExMessage* msg, BYTE filter = -1);
+
+// 获取一个消息，立即返回是否获取成功（暂仅支持鼠标消息 EM_MOUSE）
+bool peekmessage_win32(ExMessage* msg, BYTE filter = -1, bool removemsg = true);
+
+// 清除所有消息记录（暂仅支持鼠标消息 EM_MOUSE）
+void flushmessage_win32(BYTE filter = -1);
+
+//// 转换
+
+// MOUSEMSG 转 ExMessage
+ExMessage To_ExMessage(MOUSEMSG msg);
+
+// ExMessage 转 MOUSEMSG
+MOUSEMSG To_MouseMsg(ExMessage msgEx);
+
+// 兼容旧版 MOUSEMSG
+bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 
 //
 //	鼠标消息相关备注：
@@ -172,11 +199,19 @@ inline void NullFunc() {}
 #define closegraph				closegraph_win32
 
 #define BeginBatchDraw()
-#define FlushBatchDraw() FLUSH_DRAW()
+#define FlushBatchDraw()		FLUSH_DRAW()
 #define EndBatchDraw()
 
-// 获取当前绘图窗口句柄
-#define GetHWnd GetHWnd_win32
+#define GetHWnd					EasyWin32::GetHWnd_win32
+
+#define getmessage				EasyWin32::getmessage_win32
+#define peekmessage				EasyWin32::peekmessage_win32
+#define flushmessage			EasyWin32::flushmessage_win32
+
+#define MouseHit				EasyWin32::MouseHit_win32
+#define GetMouseMsg()			EasyWin32::To_MouseMsg(EasyWin32::GetMouseMsg_win32())
+#define PeekMouseMsg			EasyWin32::PeekMouseMsg_win32_old
+#define FlushMouseMsgBuffer		EasyWin32::FlushMouseMsgBuffer_win32
 
 EASY_WIN32_END
 

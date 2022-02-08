@@ -224,11 +224,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		// 键盘消息甩锅给控制台，实现对按键消息的支持
 	case WM_KEYDOWN: case WM_KEYUP: case WM_CHAR:
 	/*case WM_IME_KEYDOWN: case WM_IME_KEYUP: case WM_IME_CHAR:*/
-
-		if (pWnd == pFocusWindow)	// 当前窗口得是焦点窗口，才接受此消息
-		{
 			SendMessage(hConsole, msg, wParam, lParam);
-		}
 		break;
 
 	}
@@ -309,31 +305,104 @@ ExMessage GetMouseMsg_win32()
 	return msg;
 }
 
-bool PeekMouseMsg_win32(ExMessage* pMsg)
+bool PeekMouseMsg_win32(ExMessage* pMsg, bool bRemoveMsg)
 {
-	std::vector<ExMessage>* p_vecMsg = &pFocusWindow->vecMouseMsg;
-	if (p_vecMsg->empty())
-	{
-		return false;
-	}
-
-	// 若有新消息就按进度获取，否则获取最新一个
 	if (MouseHit_win32())
 	{
-		*pMsg = GetMouseMsg_win32();
+		if (bRemoveMsg)
+		{
+			*pMsg = GetMouseMsg_win32();
+		}
+		else
+		{
+			*pMsg = pFocusWindow->vecMouseMsg[pFocusWindow->nGetMouseMsgIndex];
+		}
+		
+		return true;
 	}
 	else
 	{
-		*pMsg = (*p_vecMsg)[p_vecMsg->size() - 1];
+		return false;
 	}
-
-	return true;
 }
 
-void FlushMouseMsg_win32()
+void FlushMouseMsgBuffer_win32()
 {
 	pFocusWindow->vecMouseMsg.clear();
 	pFocusWindow->nGetMouseMsgIndex = 0;
+}
+
+ExMessage getmessage_win32(BYTE filter)
+{
+	switch (filter)
+	{
+	case -1:
+	case EM_MOUSE:		return GetMouseMsg_win32();		break;
+	default:			return ExMessage();				break;
+	}
+}
+
+void getmessage_win32(ExMessage* msg, BYTE filter)
+{
+	*msg = getmessage_win32(filter);
+}
+
+bool peekmessage_win32(ExMessage* msg, BYTE filter, bool removemsg)
+{
+	switch (filter)
+	{
+	case -1:
+	case EM_MOUSE:		return PeekMouseMsg_win32(msg, removemsg);		break;
+	default:			return false;									break;
+	}
+}
+
+void flushmessage_win32(BYTE filter)
+{
+	switch (filter)
+	{
+	case -1:
+	case EM_MOUSE:		FlushMouseMsgBuffer_win32();		break;
+	default:												break;
+	}
+}
+
+ExMessage To_ExMessage(MOUSEMSG msg)
+{
+	ExMessage msgEx;
+	msgEx.message = msg.uMsg;
+	msgEx.ctrl = msg.mkCtrl;
+	msgEx.shift = msg.mkShift;
+	msgEx.lbutton = msg.mkLButton;
+	msgEx.mbutton = msg.mkMButton;
+	msgEx.rbutton = msg.mkRButton;
+	msgEx.x = msg.x;
+	msgEx.y = msg.y;
+	msgEx.wheel = msg.wheel;
+	return msgEx;
+}
+
+MOUSEMSG To_MouseMsg(ExMessage msgEx)
+{
+	MOUSEMSG msg;
+	msg.uMsg = msgEx.message;
+	msg.mkCtrl = msgEx.ctrl;
+	msg.mkShift = msgEx.shift;
+	msg.mkLButton = msgEx.lbutton;
+	msg.mkMButton = msgEx.mbutton;
+	msg.mkRButton = msgEx.rbutton;
+	msg.x = msgEx.x;
+	msg.y = msgEx.y;
+	msg.wheel = msgEx.wheel;
+	return msg;
+}
+
+bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg)
+{
+	ExMessage msgEx;
+	bool r = PeekMouseMsg_win32(&msgEx, bRemoveMsg);
+	*pMsg = To_MouseMsg(msgEx);
+	return r;
 }
 
 void RegisterWndClass()
