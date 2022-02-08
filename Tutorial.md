@@ -2,11 +2,13 @@
 
 EasyWin32 相对 EasyX 的新增函数并不多，易于上手。
 
+由于该库函数并不多，且 EasyWin32.h 中的函数声明都有详细的注释，所以暂时不提供库文档，请您自行查阅头文件来了解函数功能。
+
 该库支持您使用顺序代码结构和 Win32 消息派发的代码结构。
 
-顺序代码结构的具体例子：https://github.com/zouhuidong/EasyWin32/blob/main/samples/Sample2/main.cpp
+顺序代码结构的具体例子：./samples/Sample2/main.cpp
 
-Win32 消息派发的代码结构，其对应的具体例子：https://github.com/zouhuidong/EasyWin32/blob/main/samples/Sample1/main.cpp
+Win32 消息派发的代码结构，其对应的具体例子：./samples/Sample1/main.cpp
 
 ## Win32 消息派发式
 
@@ -158,7 +160,7 @@ int main()
 
 ## 顺序代码结构
 
-这应该是大家喜闻乐见的写法，因为通常使用 EasyX 的程序都是这样编写的。下面的代码来自 https://github.com/zouhuidong/EasyWin32/blob/main/samples/Sample2/main.cpp:
+这应该是大家喜闻乐见的写法，因为通常使用 EasyX 的程序都是这样编写的。下面的代码来自 ./samples/Sample2/main.cpp:
 ```cpp
 ////////////////////////////////
 //
