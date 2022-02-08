@@ -34,7 +34,7 @@ EasyX 库的 Win32 拓展版：解锁多窗口（同时创建多个绘图窗口�
 
 VisualStudio 2022 | EasyX_20220116 | Windows 10
 
-*您必须已经配置 EasyX 图形库，如未配置，请访问图形库官网 https://easyx.cn
+*您必须已经配置 EasyX 图形库，如未配置，请访问图形库官网 https://easyx.cn*
 
 ## 配置此库
 
