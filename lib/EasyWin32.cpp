@@ -34,9 +34,16 @@ bool isBusyDrawing = false;
 std::vector<EasyWindow> vecWindows;
 
 // 系统分辨率
-int sysW = 0, sysH = 0;
+int nSysW = 0, nSysH = 0;
 
-HWND hConsole;			// 控制台句柄
+// 系统标题栏宽高
+int nFrameW = 0, nFrameH = 0;
+
+// 控制台句柄
+HWND hConsole;
+
+// 是否使用自定义图标
+bool isUseCustomAppIcon = false;
 
 ////////////****** 函数定义 ******////////////
 
@@ -189,11 +196,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_SIZE:
 	{
 		// 对该窗口对应的画布进行调整
-		POINT pWndSize = GetWindowSize(hwnd);
-		pWnd->pImg->Resize(pWndSize.x, pWndSize.y);
-		pWnd->pBufferImg->Resize(pWndSize.x, pWndSize.y);
+		RECT rcWnd;
+		for (int i = 0; i < 2; i++)
+		{
+			if (GetClientRect(hwnd, &rcWnd))
+			{
+				if (rcWnd.right == 0)	rcWnd.right = 1;
+				if (rcWnd.bottom == 0)	rcWnd.bottom = 1;
+				pWnd->pImg->Resize(rcWnd.right, rcWnd.bottom);
+				pWnd->pBufferImg->Resize(rcWnd.right, rcWnd.bottom);
 
-		pWnd->isNewSize = true;
+				pWnd->isNewSize = true;
+				break;
+			}
+		}
 	}
 	break;
 
@@ -232,7 +248,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 	break;
 
-		// 键盘消息甩锅给控制台，实现对按键消息的支持
+	// 键盘消息甩锅给控制台，实现对按键消息的支持
 	case WM_KEYDOWN: case WM_KEYUP: case WM_CHAR:
 		SendMessage(hConsole, msg, wParam, lParam);
 		break;
@@ -256,7 +272,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	case WM_MOVE:
 		// 由于移动窗口超出屏幕的话可能导致子窗口显示有问题，所以此时需要彻底重绘
-		if (rctWnd.left <= 0 || rctWnd.top <= 0 || rctWnd.right >= sysW || rctWnd.bottom >= sysH)
+		if (rctWnd.left <= 0 || rctWnd.top <= 0 || rctWnd.right >= nSysW || rctWnd.bottom >= nSysH)
 		{
 			InvalidateRect(hwnd, NULL, false);
 		}
@@ -290,6 +306,16 @@ bool isWindowSizeChanged()
 	bool b = pFocusWindow->isNewSize;
 	pFocusWindow->isNewSize = false;
 	return b;
+}
+
+bool GetIsUseCustomAppIcon()
+{
+	return isUseCustomAppIcon;
+}
+
+void SetIsUseCustomAppIcon(bool bUse)
+{
+	isUseCustomAppIcon = bUse;
 }
 
 bool MouseHit_win32()
@@ -327,7 +353,7 @@ bool PeekMouseMsg_win32(ExMessage* pMsg, bool bRemoveMsg)
 		{
 			*pMsg = pFocusWindow->vecMouseMsg[pFocusWindow->nGetMouseMsgIndex];
 		}
-		
+
 		return true;
 	}
 	else
@@ -415,23 +441,85 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg)
 	return r;
 }
 
+// 得到 IMAGE 对象的 HBITMAP
+HBITMAP GetImageHBitmap(IMAGE* img)
+{
+	return CreateBitmap(img->getwidth(), img->getheight(), 1, 32, (void*)GetImageBuffer(img));
+}
+
+// HBITMAP 转 HICON
+HICON HICONFromHBitmap(HBITMAP hBmp)
+{
+	BITMAP bmp;
+	GetObject(hBmp, sizeof(BITMAP), &bmp);
+
+	HBITMAP hbmMask = CreateCompatibleBitmap(GetDC(NULL), bmp.bmWidth, bmp.bmHeight);
+
+	ICONINFO ii = { 0 };
+	ii.fIcon = TRUE;
+	ii.hbmColor = hBmp;
+	ii.hbmMask = hbmMask;
+
+	HICON hIcon = CreateIconIndirect(&ii);
+	DeleteObject(hbmMask);
+
+	return hIcon;
+}
+
+HICON GetDefaultAppIcon()
+{
+	IMAGE* old = GetWorkingImage();
+	IMAGE img(32, 32);
+	SetWorkingImage(&img);
+
+	setbkcolor(RED);
+	setbkmode(TRANSPARENT);
+	
+	settextcolor(WHITE);
+	settextstyle(48, 0, L"Consolas");
+
+	setfillcolor(BLUE);
+	setlinecolor(BLUE);
+
+	cleardevice();
+	fillcircle(16, 16, 16);
+	outtextxy(4, -8, L'X');
+
+	SetWorkingImage(old);
+
+	HBITMAP hBmp = GetImageHBitmap(&img);
+	HICON hIcon = HICONFromHBitmap(hBmp);
+	DeleteObject(hBmp);
+
+	return hIcon;
+}
+
 void RegisterWndClass()
 {
 	srand((UINT)time(NULL));
 
-	// 填写结构体
+	HICON hIcon;	// 程序图标
+	if (isUseCustomAppIcon)
+	{
+		hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	}
+	else
+	{
+		hIcon = GetDefaultAppIcon();
+	}
+
 	WndClassEx.cbSize = sizeof(WNDCLASSEX);
 	WndClassEx.style = CS_VREDRAW | CS_HREDRAW;
 	WndClassEx.lpfnWndProc = WndProc;
 	WndClassEx.cbClsExtra = 0;
 	WndClassEx.cbWndExtra = 0;
 	WndClassEx.hInstance = GetModuleHandle(0);
-	WndClassEx.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	WndClassEx.hIcon = hIcon;
 	WndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
 	WndClassEx.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
 	WndClassEx.lpszMenuName = NULL;
 	WndClassEx.lpszClassName = wstrClassName;
-	WndClassEx.hIconSm = NULL;
+	WndClassEx.hIconSm = hIcon;
 
 	// 注册窗口类
 	if (!RegisterClassEx(&WndClassEx))
@@ -445,16 +533,16 @@ void RegisterWndClass()
 // 真正创建窗口的函数
 void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent, int* nDoneFlag)
 {
-	static int nWndNum;		// 窗口计数
+	static int nWndCount;		// 窗口计数
 	std::wstring wstrTitle;	// 窗口标题
 
 	// 未设置标题
 	if (lstrlen(strWndTitle) == 0)
 	{
 		wstrTitle = L"EasyX Window";
-		if (nWndNum != 0)
+		if (nWndCount != 0)
 		{
-			wstrTitle += L" (" + std::to_wstring(nWndNum + 1) + L")";
+			wstrTitle += L" (" + std::to_wstring(nWndCount + 1) + L")";
 		}
 	}
 	else
@@ -462,16 +550,13 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 		wstrTitle = strWndTitle;
 	}
 
-	// 获取分辨率
-	if (!sysW)
-	{
-		sysW = GetSystemMetrics(SM_CXSCREEN);
-		sysH = GetSystemMetrics(SM_CYSCREEN);
-	}
-
 	// 第一次创建窗口
-	if (nWndNum == 0)
+	if (nWndCount == 0)
 	{
+		// 获取分辨率
+		nSysW = GetSystemMetrics(SM_CXSCREEN);
+		nSysH = GetSystemMetrics(SM_CYSCREEN);
+
 		// 注册窗口类
 		RegisterWndClass();
 		hConsole = GetConsoleWindow();
@@ -516,7 +601,7 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 			return;
 		}
 	}
-	
+
 	wnd.pImg = new IMAGE(w, h);
 	wnd.pBufferImg = new IMAGE(w, h);
 	wnd.funcWndProc = WindowProcess;
@@ -528,10 +613,21 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 	vecWindows.push_back(wnd);
 	SetWorkingWindow(wnd.hWnd);
 
+	// 获取边框大小，补齐绘图区大小
+	if (nWndCount == 0)
+	{
+		RECT rcClient, rcWnd;
+		GetClientRect(wnd.hWnd, &rcClient);
+		GetWindowRect(wnd.hWnd, &rcWnd);
+		nFrameW = (rcWnd.right - rcWnd.left) - rcClient.right;
+		nFrameH = (rcWnd.bottom - rcWnd.top) - rcClient.bottom;
+	}
+	SetWindowPos(wnd.hWnd, HWND_TOP, 0, 0, w + nFrameW, h + nFrameH, SWP_NOMOVE);
+
 	ShowWindow(wnd.hWnd, SW_SHOWNORMAL);
 	UpdateWindow(wnd.hWnd);
 
-	nWndNum++;
+	nWndCount++;
 
 	*nDoneFlag = 1;
 
@@ -559,7 +655,7 @@ HWND initgraph_win32(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*Window
 		InitWindow(w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag);
 		EnableWindow(hParent, true);
 		SetForegroundWindow(hParent);
-	
+
 		return NULL;
 	}
 }

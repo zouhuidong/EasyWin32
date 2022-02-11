@@ -4,7 +4,7 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.3
+//	版　　本：Ver 2.4
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
@@ -117,6 +117,13 @@ std::vector<EasyWindow> GetCreatedWindowList();
 
 // 绘图窗口大小是否改变
 bool isWindowSizeChanged();
+
+// 获取是否使用自定义程序图标
+bool GetIsUseCustomAppIcon();
+
+// 设置是否使用自定义程序图标
+// 默认不会使用自定义图标，而是使用 EasyWin32 自绘图标
+void SetIsUseCustomAppIcon(bool bUse);
 
 ////////////****** 鼠标消息相关函数 ******////////////
 
