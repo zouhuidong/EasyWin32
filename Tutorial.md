@@ -14,7 +14,7 @@ EasyWin32 相对 EasyX 的新增函数并不多，易于上手。
 
 **注意：顺序代码结构目前还不够稳定，强烈建议编写窗口过程函数（Win32 消息派发式代码）。**
 
-## Win32 消息派发式
+## Win32 消息派发式代码结构
 
 如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，就像下面这样：
 
@@ -317,16 +317,21 @@ int main()
 
 或者您可以使用阻塞函数 `EasyWin32::init_end()`，这个函数在“Win32 消息派发式”的示例代码中已经讲过。
 
----
-
-**警告**
+## 稳定性警告
 
 顺序代码结构不稳定，例如，某些情况下，反复拉伸窗口可能导致一些 bug，这些 bug 可能暂时还未修复。
 
 所以强烈建议使用 Win32 消息派发式的代码结构！
 
-## 其他注意事项
+## 关于 IMAGE* 的空指针
 
-一部分需要注意的内容都在“开始使用”中结合例子描述完毕，需要补充的是，由于 EasyWin32 绕开了 EasyX 原生的 `initgraph` 函数，所以在调用需要 `IMAGE` 对象指针的函数时，不可以传入 `NULL`，而需要传入您的窗口的 `IMAGE` 对象指针。
+由于 EasyWin32 绕开了 EasyX 原生的 `initgraph` 函数，所以在调用需要 `IMAGE` 对象指针的函数时，不可以传入 `NULL`，而需要传入您的窗口的 `IMAGE` 对象指针。
 
-诸如以下函数都默认会传入 `IMAGE* pImg = NULL`：`GetImageBuffer`，`SetWorkingImage`，`GetImageHDC` 等等。
+诸如以下函数都默认会传入 `IMAGE* pImg = NULL`：`GetImageBuffer`，`SetWorkingImage`，`GetImageHDC` 等等，都需要传入具体的指针。
+
+## 程序图标
+
+EasyWin32 将自绘一个 EasyX 的图标作为程序图标，这个图标模仿的是 EasyX 官网的页面图标。
+
+如果想要使用自己的图标，必须先在程序第一次创建窗口前就设置 `EasyWin32::SetIsUseCustomAppIcon(true);`。
+
