@@ -4,7 +4,7 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.2.1
+//	版　　本：Ver 2.3
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
@@ -61,13 +61,17 @@ HWND initgraph_win32(
 // 
 // 函数标准形态：bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
 // 
+// 注意：
+// 相比于标准的 Win32 窗口过程函数，增加了一个 HINSTANCE 类型形参。
+// 返回值的意义也不相同，见下文。
+// 
 // 返回值：
 // true		表示使用系统默认方法处理该消息
 // false	表示不再需要系统默认方法处理该消息
 // 
 // 注意事项：
 // 1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息
-// 2. 如果自行处理 WM_CLOSE 消息，则无需编写关闭窗口的代码，但最后函数必须返回 true，否则可能造成内存泄漏
+// 2. 接受 WM_CLOSE 消息时，返回 true 或 false 表示是否关闭窗口，但如果关闭窗口，您无需编写销魂窗口的代码
 //
 
 // 关闭某一绘图窗口，若句柄为 NULL 则关闭所有绘图窗口
