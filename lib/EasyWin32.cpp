@@ -9,6 +9,11 @@
 #include "AHGraphics.h"
 #include <thread>
 
+// 最大鼠标消息积累量
+//		若鼠标消息积累量达到此阈值，且消息都已经处理完，将自动清理鼠标消息积累
+//		若尚未处理完所有鼠标消息，则不会自动清理鼠标消息积累
+#define MAX_MOUSEMSG_SIZE 1000
+
 EASY_WIN32_BEGIN
 
 ////////////****** 全局变量 ******////////////
@@ -17,7 +22,7 @@ EASY_WIN32_BEGIN
 WNDCLASSEX WndClassEx;
 
 // 窗口类名
-LPCTSTR pszClassName = L"EasyX_Win32_Class";
+wchar_t wstrClassName[] = L"EasyWin32_Class";
 
 // 正操作窗口
 EasyWindow* pFocusWindow = NULL;
@@ -182,17 +187,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SIZE:
-
+	{
 		// 对该窗口对应的画布进行调整
 		POINT pWndSize = GetWindowSize(hwnd);
 		pWnd->pImg->Resize(pWndSize.x, pWndSize.y);
 		pWnd->pBufferImg->Resize(pWndSize.x, pWndSize.y);
 
 		pWnd->isNewSize = true;
+	}
+	break;
 
-		break;
-
-		// 鼠标消息
+	// 鼠标消息
 	case WM_MOUSEMOVE:
 	case WM_MOUSEWHEEL:
 	case WM_LBUTTONDOWN:
@@ -204,6 +209,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_RBUTTONDOWN:
 	case WM_RBUTTONUP:
 	case WM_RBUTTONDBLCLK:
+	{
+		// 消息都已经处理完，且堆存消息数量达到阈值
+		if (!MouseHit_win32() && pWnd->vecMouseMsg.size() >= MAX_MOUSEMSG_SIZE)
+		{
+			FlushMouseMsgBuffer_win32();
+		}
 
 		ExMessage msgMouse;
 		msgMouse.message = msg;
@@ -218,13 +229,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 		// 记录
 		pWnd->vecMouseMsg.push_back(msgMouse);
-
-		break;
+	}
+	break;
 
 		// 键盘消息甩锅给控制台，实现对按键消息的支持
 	case WM_KEYDOWN: case WM_KEYUP: case WM_CHAR:
-	/*case WM_IME_KEYDOWN: case WM_IME_KEYUP: case WM_IME_CHAR:*/
-			SendMessage(hConsole, msg, wParam, lParam);
+		SendMessage(hConsole, msg, wParam, lParam);
 		break;
 
 	}
@@ -407,6 +417,8 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg)
 
 void RegisterWndClass()
 {
+	srand((UINT)time(NULL));
+
 	// 填写结构体
 	WndClassEx.cbSize = sizeof(WNDCLASSEX);
 	WndClassEx.style = CS_VREDRAW | CS_HREDRAW;
@@ -418,15 +430,20 @@ void RegisterWndClass()
 	WndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
 	WndClassEx.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
 	WndClassEx.lpszMenuName = NULL;
-	WndClassEx.lpszClassName = pszClassName;
+	WndClassEx.lpszClassName = wstrClassName;
 	WndClassEx.hIconSm = NULL;
 
 	// 注册窗口类
-	RegisterClassEx(&WndClassEx);
+	if (!RegisterClassEx(&WndClassEx))
+	{
+		std::wstring str = std::to_wstring(GetLastError());
+		MessageBox(NULL, (L"Error registing window class: " + str).c_str(), L"[Error]", MB_OK | MB_ICONERROR);
+		exit(-1);
+	}
 }
 
 // 真正创建窗口的函数
-void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent, bool* isDone)
+void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent, int* nDoneFlag)
 {
 	static int nWndNum;		// 窗口计数
 	std::wstring wstrTitle;	// 窗口标题
@@ -468,21 +485,42 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 
 	// 初始化窗口信息
 	EasyWindow wnd;
-	wnd.hWnd = CreateWindowEx(
-		WS_EX_WINDOWEDGE,
-		pszClassName,
-		wstrTitle.c_str(),
-		WS_OVERLAPPEDWINDOW | CS_DBLCLKS,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		w, h,
-		hParent,
-		NULL,
-		GetModuleHandle(0),
-		NULL
-	);
+
+	// 创建窗口
+	for (int i = 0;; i++)
+	{
+		wnd.hWnd = CreateWindowEx(
+			WS_EX_WINDOWEDGE,
+			wstrClassName,
+			wstrTitle.c_str(),
+			WS_OVERLAPPEDWINDOW | CS_DBLCLKS,
+			CW_USEDEFAULT, CW_USEDEFAULT,
+			w, h,
+			hParent,
+			NULL,
+			GetModuleHandle(0),
+			NULL
+		);
+
+		if (wnd.hWnd)
+		{
+			break;
+		}
+
+		// 三次创建窗口失败，不再尝试
+		else if (i == 2)
+		{
+			std::wstring str = std::to_wstring(GetLastError());
+			MessageBox(NULL, (L"Error creating window: " + str).c_str(), L"[Error]", MB_OK | MB_ICONERROR);
+			*nDoneFlag = -1;
+			return;
+		}
+	}
+	
 	wnd.pImg = new IMAGE(w, h);
 	wnd.pBufferImg = new IMAGE(w, h);
 	wnd.funcWndProc = WindowProcess;
+	wnd.vecMouseMsg.reserve(MAX_MOUSEMSG_SIZE);
 	wnd.nGetMouseMsgIndex = 0;
 	wnd.isNewSize = false;
 	wnd.isSentCreateMsg = false;
@@ -495,10 +533,10 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 
 	nWndNum++;
 
-	*isDone = true;
+	*nDoneFlag = 1;
 
 	MSG Msg;
-	while (GetMessage(&Msg, NULL, NULL, NULL))
+	while (GetMessage(&Msg, NULL, NULL, NULL) > 0)
 	{
 		TranslateMessage(&Msg);
 		DispatchMessage(&Msg);
@@ -507,17 +545,18 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 
 HWND initgraph_win32(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent)
 {
-	bool isDone = false;
+	int nDoneFlag = 0;
 	if (!hParent)
 	{
-		std::thread(InitWindow, w, h, isCmd, strWndTitle, WindowProcess, hParent, &isDone).detach();
-		while (!isDone) { Sleep(10); };	// 等待窗口创建完成
-		return pFocusWindow->hWnd;
+		std::thread(InitWindow, w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag).detach();
+		while (nDoneFlag == 0) { Sleep(10); };	// 等待窗口创建完成
+		if (nDoneFlag == -1)	return NULL;
+		else					return pFocusWindow->hWnd;
 	}
 	else
 	{
 		EnableWindow(hParent, false);
-		InitWindow(w, h, isCmd, strWndTitle, WindowProcess, hParent, &isDone);
+		InitWindow(w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag);
 		EnableWindow(hParent, true);
 		SetForegroundWindow(hParent);
 	
