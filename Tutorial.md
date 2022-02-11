@@ -42,11 +42,26 @@ int main()
 
 窗口过程函数的返回值是布尔类型，标识是否需要使用系统默认方法处理该消息。
 
-需要注意的是：
-
-1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息。
-
-2. 如果自行处理 WM_CLOSE 消息，则无需编写关闭窗口的代码，但最后函数必须返回 true，否则可能造成内存泄漏。
+EasyWin32.h 中注释：
+```
+//
+// 窗口消息处理函数规范
+// 
+// 函数标准形态：bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
+// 
+// 注意：
+// 相比于标准的 Win32 窗口过程函数，增加了一个 HINSTANCE 类型形参。
+// 返回值的意义也不相同，见下文。
+// 
+// 返回值：
+// true		表示使用系统默认方法处理该消息
+// false	表示不再需要系统默认方法处理该消息
+// 
+// 注意事项：
+// 1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息
+// 2. 接受 WM_CLOSE 消息时，返回 true 或 false 表示是否关闭窗口，但如果关闭窗口，您无需编写销魂窗口的代码
+//
+```
 
 由于 `main` 函数中调用了 `EasyWin32::init_end()` 函数进行阻塞，这个函数会自动判断窗口是否还存在，所以不需要再使用 `EasyWin32::isAnyWindow()` 进行判断。
 
