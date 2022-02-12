@@ -2,7 +2,11 @@
 
 EasyWin32 相对 EasyX 的新增函数并不多，易于上手。
 
-由于该库函数并不多，且 EasyWin32.h 中的函数声明都有详细的注释，所以暂时不提供库文档，请您自行查阅头文件来了解函数功能。
+确保您在项目中加入了 EasyWin32 的文件，如果还没有，请看 [README.md](./README.md#配置此库)。
+
+注意，并非所有环境都能配置 EasyWin32，推荐使用和我一样的编译环境，否则可能报错，编译环境见 [README.md](./README.md#编译环境)。
+
+由于该库函数并不多，且 EasyWin32.h 中的函数声明都有详细的注释，所以暂时不提供库文档，**请您自行查阅头文件来了解具体的各个函数的功能**。
 
 该库支持您使用顺序代码结构和 Win32 消息派发的代码结构。
 
@@ -335,6 +339,8 @@ int main()
 
 如果在 Win32 消息派发式的代码中，您可以使用阻塞函数 `EasyWin32::init_end()`，这个前面也提到过。
 
+如果您不喜欢以上方式，事实上您可以在创建窗口完毕之后，调用一次 `EasyWin32::AutoExit();`，这个函数将自动检测是否还有任何窗口未被关闭，如果全部窗口都被关闭，则自动结束程序。
+
 ### 混合式
 
 如果前面两种代码结构混合起来也是可以的，见 [Sample3](./samples/Sample3/main.cpp)。
@@ -352,4 +358,124 @@ int main()
 EasyWin32 将自绘一个 EasyX 的图标作为程序图标，这个图标模仿的是 EasyX 官网的页面图标。
 
 如果想要使用自己的图标，必须先在程序第一次创建窗口前就设置 `EasyWin32::SetIsUseCustomAppIcon(true);`。
+
+## 在原有 EasyX 项目上使用 EasyWin32
+
+在大多数情况下，在原有 EasyX 项目上使用 EasyWin32 是很轻松的。
+
+首先将 `#include <graphics.h>` 或 `#include <easyx.h>` 替换为 `#include "EasyWin32.h"`。
+
+如果您的代码使用了批量绘图，那么在使用了批量绘图的地方必然存在 `FlushBatchDrawing()` 函数，比如下面这段代码：
+
+```cpp
+while(true)
+{
+	for (int i = 0; i < 10 ; i++)
+	{
+		line(10, i*10, 110, i*10);
+	}
+	Sleep(20);
+	outtextxy(0, 0, L"Hello");
+	FlushBatchDraw();
+
+	cleardevice();
+}
+```
+
+那么，在绘图开始的地方加上 `BEGIN_TASK();`，然后在绘图结束的地方，也就是 `FlushBatchDraw()` 的前面，加上 `END_TASK();`，如下：
+
+```cpp
+while(true)
+{
+	BEGIN_TASK();	//<- add
+
+	for (int i = 0; i < 10 ; i++)
+	{
+		line(10, i*10, 110, i*10);
+	}
+	Sleep(20);
+	outtextxy(0, 0, L"Hello");
+
+	END_TASK();	//<- add
+	FlushBatchDraw();
+
+	cleardevice();
+}
+```
+
+这还没完，您必须确保任何的绘图操作都被放到了 `BEGIN_TASK();` 和 `END_TASK();` 的中间，就像下面这样：
+
+```cpp
+while(true)
+{
+	BEGIN_TASK();
+
+	cleardevice();	//<- Move to here
+	for (int i = 0; i < 10 ; i++)
+	{
+		line(10, i*10, 110, i*10);
+	}
+	Sleep(20);
+	outtextxy(0, 0, L"Hello");
+
+	END_TASK();
+	FlushBatchDraw();
+}
+```
+
+而原先代码中的 `FlushBatchDraw()` 函数是不需要改的，因为会被宏自动替换为 `FLUSH_DRAW()`，`EndBatchDraw()` 同样也被替换为 `FLUSH_DRAW()`，至于 `BeginBatchDraw()`，他会被替换为空。
+
+所以按理来说您不需要删除任何代码，只需要在每个 `FlushBatchDraw()` 函数前，把整个绘图任务用 `BEGIN_TASK();` 和 `END_TASK();` 包起来即可。
+
+但是还有比较细节的一点，如果说 `Sleep()` 的调用只是为了降低 CPU 占用，则不要将其放在一个绘图任务中，而应该挪到外面来，如下：
+
+```cpp
+while(true)
+{
+	BEGIN_TASK();
+
+	cleardevice();
+	for (int i = 0; i < 10 ; i++)
+	{
+		line(10, i*10, 110, i*10);
+	}
+	outtextxy(0, 0, L"Hello");
+
+	END_TASK();
+	FlushBatchDraw();
+	
+	Sleep(20);	//<- Move to here
+}
+```
+
+这很关键，因为如果不把 `Sleep()` 放出来，那么这个循环就会变得非常紧密，在 `END_TASK();` 刚结束不久，马上就会 `BEGIN_TASK();`，相当于程序几乎毫无空隙地占用了绘图权，这可能会导致用户操作（例如拉伸窗口）需要等待很久才能做出反应，因为 EasyWin32 必须等待程序没有占用绘图权的时候才能处理这些消息（例如拉伸窗口引发的画布大小调整）。
+
+所以在多次绘图任务的间隙中插入 `Sleep()` 很必要，同时也能降低 CPU 占用，但是不要把 `Sleep()` 放在绘图任务中进行。如果必须要这么做，可以在 `Sleep()` 前后断开这个任务，将其一分为二，如下：
+
+```cpp
+while(true)
+{
+	BEGIN_TASK();
+
+	cleardevice();
+	for (int i = 0; i < 10 ; i++)
+	{
+		line(10, i*10, 110, i*10);
+	}
+	
+	END_TASK();	//<- interrupt the task
+	FlushBatchDraw();
+	
+	Sleep(3000);	//<- sleep
+	
+	BEGIN_TASK();	//<- start the task again
+	
+	outtextxy(0, 0, L"Hello");
+
+	END_TASK();
+	FlushBatchDraw();
+}
+```
+
+
 
