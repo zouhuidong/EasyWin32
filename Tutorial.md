@@ -12,9 +12,11 @@ EasyWin32 相对 EasyX 的新增函数并不多，易于上手。
 
 > [二者结合的例子](./samples/Sample3/main.cpp)
 
-**注意：顺序代码结构目前还不够稳定，强烈建议编写窗口过程函数（Win32 消息派发式代码）。**
+而且，EasyWin32 的高兼容性支持您轻松地将原先的 EasyX 项目配置上 EasyWin32。
 
-## Win32 消息派发式代码结构
+## 代码结构
+
+### Win32 消息派发式代码结构
 
 如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，就像下面这样：
 
@@ -129,12 +131,12 @@ bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInsta
 
 	case WM_PAINT:
 
-		BEGIN_DRAW(hwnd);		// 将绘图窗口设为自己，并启动一次绘图任务
+		BEGIN_TASK_WND(hwnd);	// 将绘图窗口设为自己，并启动一次绘图任务
 		setbkcolor(0xf0f0f0);	// 设置背景色
 		settextcolor(BLUE);		// 设置文本色
 		cleardevice();			// 清屏
 		outtextxy(20, 20, str);	// 输出文字
-		END_DRAW();				// 结束此次绘图任务
+		END_TASK();				// 结束此次绘图任务
 
 		break;
 
@@ -143,13 +145,10 @@ bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInsta
 		{
 		case IDC_BTN:	// 按下按钮
 
-			BEGIN_DRAW(hwnd);
+			BEGIN_TASK_WND(hwnd);
 			wsprintf(str, L"按下了按钮");
-			
-			// 在非 WM_PAINT 消息区域，如需要立即刷新，需要强制重绘
-			EasyWin32::EnforceRedraw();
-			
-			END_DRAW();
+			FLUSH_DRAW();		// 在非 WM_PAINT 消息区域，如需要立即刷新，需要强制重绘
+			END_TASK();
 
 			break;
 		}
@@ -171,15 +170,23 @@ int main()
 
 ![示例图片](./screenshot/4.png)
 
-需要注意的是：在窗口过程函数中绘图，每次绘图操作，无论是设置绘图属性还是绘图，都需要在每次操作前使用 `BEGIN_DRAW(窗口句柄)`，并在每次操作结束时使用 `END_DRAW()`。
+需要注意的是：每次执行绘图任务（无论是设置绘图属性还是绘图），或者是诸如鼠标消息获取的任务，都需要在每次操作前使用 `BEGIN_TASK()` 或 `BEGIN_TASK_WND(窗口句柄)`，前者无需指定窗口，直接在当前活动窗口上执行任务，但后者需要指定窗口，程序会先将目标绘图窗口转向您设置的窗口，然后再执行任务。
 
-这样做是为了协调多个窗口同时存在的情况，多个窗口可能抢占绘图权，所以需要您在每次绘图前后调用这些宏，使得多个窗口有序绘图。
+必须在任务执行结束后调用 `END_TASK()`，它和 `BEGIN_TASK()` 配成一对。
 
-注意，如果编写 Win32 消息派发式的代码，您需要具备一些 Win32 编程基础。
+EasyWin32 默认就是双缓冲的，所以无需再调用 EasyX 原生的 `BeginBatchDraw` 系列函数。不同于它们的是，`BEGIN_TASK()` 系列宏代表的是一个任务的起始和结束，包括但不限于绘图任务，而 `FLUSH_DRAW()` 则是强制重绘，所以请不要混淆。
 
-## 顺序代码结构
+还有一点需要注意的是，EasyX 原生的 `BeginBatchDraw` 一系列函数都是面向绘图窗口的，也就是说，如果处在 IMAGE 对象内部，`BeginBatchDraw` 系列函数会出错，但是在 EasyWin32 中我对他们都宏定义了一遍，就算它们被调用了也不会造成影响。
 
-这应该是大家喜闻乐见的写法，因为通常使用 EasyX 的程序都是这样编写的。下面的代码来自 ./samples/Sample2/main.cpp:
+其实，调用 `BEGIN_TASK()` 系列宏来表示一个任务的起始和结束，是为了协调多个窗口同时存在的情况，因为多个窗口可能抢占绘图权，所以您需要在执行一个任务时进行标识，使得多个窗口有序绘图。
+
+如果是在顺序代码结构中，很多时候，用户操作导致的关闭窗口，或者是窗口拉伸导致的画布调整，也很有可能直接掐断您的绘图任务，如果您不使用这些宏来标识您正在进行绘图任务的话，就会导致两个任务互相冲突，导致程序崩溃。
+
+最后提一句，需要具备一些 Win32 编程基础，才能编写 Win32 消息派发式的代码。推荐一个 Win32 学习网站：http://winprog.org/tutorial/zh/start_cn.html 。
+
+### 顺序代码结构
+
+这应该是大家喜闻乐见的写法，因为通常使用 EasyX 的程序都是这样编写的。下面的代码来自 [源码](./samples/Sample2/main.cpp)：
 ```cpp
 ////////////////////////////////
 //
@@ -207,40 +214,52 @@ int main()
 	settextstyle(16, 8, _T("Courier"));
 	settextcolor(GREEN);
 
+	// 定时绘制
+	clock_t tRecord = 0;
+
 	while (true)
 	{
 		// 若窗口 1 还存在（未被关闭）
 		if (EasyWin32::isAliveWindow(hWnd1))
 		{
-			// 设置窗口 1 为目标绘图窗口
-			EasyWin32::SetWorkingWindow(hWnd1);
-
-			// 绘制内容：EasyX 官方示例“字符阵”（简化）
-			cleardevice();
-			for (int i = 0; i <= 200; i++)
+			// 一段时间重绘一次
+			if (clock() - tRecord >= 100)
 			{
-				// 在随机位置显示三个随机字母
-				for (int j = 0; j < 3; j++)
-				{
-					int x = (rand() % 80) * 8;
-					int y = (rand() % 20) * 24;
-					char c = (rand() % 26) + 65;
-					outtextxy(x, y, c);
-				}
-			}
+				// 设置窗口 1 为目标绘图窗口，并启动一个绘图任务
+				BEGIN_TASK_WND(hWnd1);
 
-			// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
-			FLUSH_DRAW();
+				// 绘制内容：EasyX 官方示例“字符阵”（简化）
+				cleardevice();
+				for (int i = 0; i <= 200; i++)
+				{
+					// 在随机位置显示三个随机字母
+					for (int j = 0; j < 3; j++)
+					{
+						int x = (rand() % 80) * 8;
+						int y = (rand() % 20) * 24;
+						char c = (rand() % 26) + 65;
+						outtextxy(x, y, c);
+					}
+				}
+
+				// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+				// 注意：一段绘图任务结束，必须以此宏结尾（即 BEGIN_TASK_WND 和 END_TASK 必须连用）
+				END_TASK();
+
+				// 不在窗口过程函数的 WM_PAINT 消息内绘图时，必须强制重绘
+				// 由于没有自定义窗口过程函数，所以当然也要调用此宏强制重绘
+				FLUSH_DRAW();
+			}
 		}
 
 		// 窗口 2
 		if (EasyWin32::isAliveWindow(hWnd2))
 		{
-			EasyWin32::SetWorkingWindow(hWnd2);
+			BEGIN_TASK_WND(hWnd2);
 
 			// 绘制内容：EasyX 官方示例“鼠标操作”（有改动）
 			ExMessage m;
-			if (peekmessage(&m, EM_MOUSE))	// 若成功获取一条鼠标消息
+			while (peekmessage(&m, EM_MOUSE))
 			{
 				switch (m.message)
 				{
@@ -261,6 +280,7 @@ int main()
 				}
 			}
 
+			END_TASK();
 			FLUSH_DRAW();
 		}
 
@@ -271,12 +291,12 @@ int main()
 		}
 
 		// 降低 CPU 占用
-		if (rand() % 777 == 0)
-			Sleep(1);
+		Sleep(50);
 	}
 
 	return 0;
 }
+
 ```
 
 代码其实很简单，注释也很详细，这种“顺序代码结构”与上面那种 Win32 式的代码结构最大的区别就是不需要创建 `WndProc`，即窗口过程函数。
@@ -291,13 +311,9 @@ int main()
 
 **设置绘图窗口、输出绘图缓冲**
 
-在 `if` 语句内部，首先需要调用 `EasyWin32::SetWorkingWindow()` 来设置当前的绘图窗口，由于是顺序代码结构，不会出现两个绘图任务抢占绘图权的情况，所以不需要使用 `BEGIN_DRAW()` 和 `END_DRAW()` 宏。在设置绘图窗口后，可以尽情绘图，绘图结束后需要调用 `FLUSH_DRAW()` 输出您的绘图缓冲。
+在 `if` 语句内部，执行绘图任务时，需要调用 `BEGIN_TASK`（或 `BEGIN_TASK_WND`） 宏，任务结束时，使用 `END_TASK()` 宏。由于这部分内容在上一节中讲过，所以不再赘述。
 
-需要注意的是，EasyX 原生的 `BeginBatchDraw` 一系列函数都是面向绘图窗口的，也就是说，如果处在 IMAGE 对象内部，`BeginBatchDraw` 系列函数会出错，所以请不要在 EasyWin32 中使用这些函数。
-
-但是考虑到兼容性问题，我将他们都重新进行了宏定义，`BeginBatchDraw` 和 `EndBatchDraw` 都将无意义，而 `FlushBatchDraw` 则等同于 `FLUSH_DRAW`。
-
-区别于 EasyX，EasyWin32 中的 `BEGIN_DRAW` 和 `END_DRAW` 组成一套，用在 Win32 式代码结构中，表示进行一个绘图任务；而 `FLUSH_DRAW` 用于顺序代码结构，表示完成绘图，并输出绘图缓冲。
+不同与 Win32 消息派发式的代码结构，顺序代码结构中，由于没有创建窗口过程函数，所以没有在正常的 WM_PAINT 消息中绘图，这就需要在每次绘图任务结束时，再调用 `FLUSH_DRAW()` 宏，以强制重绘。
 
 ---
 
@@ -307,6 +323,8 @@ int main()
 
 按键消息支持直接使用 `_getch` 一系列函数获取。
 
+注意：使用鼠标消息相关函数时，同样也需要使用 `BEGIN_TASK` 系列宏来标识进行一个任务。
+
 ---
 
 **容易忽略的程序结束判定**
@@ -315,13 +333,13 @@ int main()
 
 这条判断很容易被忽略，如果不对是否还存在窗口进行判断的话，所有窗口都被关闭后，`main` 函数仍会继续运行，但是不在 Windows 任务栏中显示，会残留在后台进程中。
 
-或者您可以使用阻塞函数 `EasyWin32::init_end()`，这个函数在“Win32 消息派发式”的示例代码中已经讲过。
+如果在 Win32 消息派发式的代码中，您可以使用阻塞函数 `EasyWin32::init_end()`，这个前面也提到过。
 
-## 稳定性警告
+### 混合式
 
-顺序代码结构不稳定，例如，某些情况下，反复拉伸窗口可能导致一些 bug，这些 bug 可能暂时还未修复。
+如果前面两种代码结构混合起来也是可以的，见 [Sample3](./samples/Sample3/main.cpp)。
 
-所以强烈建议使用 Win32 消息派发式的代码结构！
+使用混合式的代码可以在顺序执行代码的同时，帮助您处理一些 Windows 消息，例如在 Sample3 中就响应了 WM_CLOSE 消息，也就是在用户点击关闭窗口的时候，弹出了一个提示框。
 
 ## 关于 IMAGE* 的空指针
 
