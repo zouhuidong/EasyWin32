@@ -36,35 +36,9 @@ bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInsta
 			return false;
 		}
 		break;
-	default:	return true;
+
+	default:	return true;	break;
 	}
-}
-
-// 实施画单个完整小球的函数
-void DrawCell(
-	int left_x,						// 左顶点的X轴坐标
-	int top_y,						// 左顶点的y轴坐标
-	float PI,						// 圆周率
-	float radianAngle				// 起始角的弧度
-)
-{
-	// 设置无边框的填充圆的颜色
-	setfillcolor(RGB(250, 250, 250));
-
-	// 画无边框的填充圆。
-	solidcircle(left_x + 25, top_y + 25, 20);
-
-	// 设置无边框的填充扇形颜色
-	setfillcolor(RGB(80, 80, 80));
-
-	// 画无边框的填充扇形
-	solidpie(left_x + 5, top_y + 5, left_x + 50 - 5, top_y + 50 - 5, radianAngle, radianAngle + PI);
-
-	// 设置无边填充圆的颜色
-	setfillcolor(RGB(158, 2, 251));
-
-	// 画无边填充圆
-	solidcircle(left_x + 25, top_y + 25, 15);
 }
 
 int main()
@@ -77,39 +51,40 @@ int main()
 
 	while (true)
 	{
-		// 用背景色清空屏幕
+		// 启动一个绘图任务
+		// 由于只创建了一个窗口，所以不需要指定目标绘图窗口
+		// 否则就需要调用 BEGIN_TASK_WND() 宏，指定目标绘图窗口
+		BEGIN_TASK();
+
+		// 进行一些绘制，由于调用的都是 EasyX 绘图函数，不再注释
 		cleardevice();
-
-		// 设置绘图色为背景颜色：因为在确定每一个小球的位置时要画一个有边框的矩形，所以设置如果去掉会显示矩形边框
 		setcolor(RGB(185, 230, 0));
-
-		// 设置无边框的填充矩形的颜色
 		setfillcolor(RGB(185, 230, 0));
-
-		// 画外层无边框的填充矩形，限制所有小球的范围
 		solidrectangle(10, 10, 820, 570);
-
-		// 控制行数
 		for (size_t j = 0; j < 11; j++)
 		{
-			// 控制列数
 			for (size_t i = 0; i < 16; i++)
 			{
-				x = 15 + 50 * i;							// X轴坐标
-				y = 15 + 50 * j;							// y轴坐标
-				g_radianAngle = 0 + g_multiples * g_PI / 4;	// 起始角的弧度
-
+				x = 15 + 50 * i;
+				y = 15 + 50 * j;
+				g_radianAngle = 0 + g_multiples * g_PI / 4;
 				i < 15 ? g_multiples++ : g_multiples = g_multiples;
-
-				// 画有边矩形，确定单个小球的位置
 				rectangle(x, y, x + 50, y + 50);
-
-				// 画单个小球
-				DrawCell(x, y, g_PI, g_radianAngle);
+				setfillcolor(RGB(250, 250, 250));
+				solidcircle(x + 25, y + 25, 20);
+				setfillcolor(RGB(80, 80, 80));
+				solidpie(x + 5, y + 5, x + 50 - 5, y + 50 - 5, g_radianAngle, g_radianAngle + g_PI);
+				setfillcolor(RGB(158, 2, 251));
+				solidcircle(x + 25, y + 25, 15);
 			}
 		}
 
 		// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+		// 注意：一段绘图任务结束，必须以此宏结尾（即 BEGIN_TASK 和 END_TASK 必须连用）
+		END_TASK();
+
+		// 不在窗口过程函数的 WM_PAINT 消息内绘图时，必须强制重绘
+		// 由于没有自定义窗口过程函数，所以当然也要调用此宏强制重绘
 		FLUSH_DRAW();
 
 		while (true)

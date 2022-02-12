@@ -47,6 +47,15 @@ bool isUseCustomAppIcon = false;
 
 ////////////****** 函数定义 ******////////////
 
+// 阻塞等待当前绘图任务完成
+void WaitForDrawing()
+{
+	while (isBusyDrawing)
+	{
+		HpSleep(1);
+	}
+}
+
 // 通过句柄获得此窗口在窗口记录表中的索引
 // 未找到返回 -1
 int GetWindowByHWND(HWND hWnd)
@@ -63,23 +72,40 @@ int GetWindowByHWND(HWND hWnd)
 	return index;
 }
 
-// 按窗口索引进行关闭窗口
-void closegraph_win32(int index)
+// 删除窗口，释放内存
+void DelWindow(int index)
 {
 	EasyWindow* pWnd = &vecWindows[index];
 
-	// 若待关闭窗口正在绘图，必须等待绘图结束，防止内存越界
-	while (pWnd == pFocusWindow && isBusyDrawing) { Sleep(1); };
 	delete pWnd->pImg;
 	delete pWnd->pBufferImg;
 	pWnd->pImg = NULL;
 	pWnd->pBufferImg = NULL;
 
-	//DestroyWindow(pWnd->hWnd);
+	DestroyWindow(pWnd->hWnd);
 	PostQuitMessage(NULL);
 
 	// 删除此窗口的记录
 	vecWindows.erase(vecWindows.begin() + index);
+}
+
+// 按窗口索引进行关闭窗口
+void closegraph_win32(int index)
+{
+	EasyWindow* pWnd = &vecWindows[index];
+
+	// 防止和当前绘图任务冲突
+	if (pWnd == pFocusWindow)
+	{
+		WaitForDrawing();
+		isBusyDrawing = true;
+		DelWindow(index);
+		isBusyDrawing = false;
+	}
+	else
+	{
+		DelWindow(index);
+	}
 }
 
 void closegraph_win32(HWND hWnd)
@@ -91,7 +117,7 @@ void closegraph_win32(HWND hWnd)
 			closegraph_win32(i);
 		}
 	}
-	else
+	else				// close single
 	{
 		int index = GetWindowByHWND(hWnd);
 		if (index == -1)
@@ -143,7 +169,7 @@ bool SetWorkingWindow(HWND hWnd)
 		return false;
 	}
 	pFocusWindow = &vecWindows[index];
-	while (isBusyDrawing) { Sleep(1); };
+	WaitForDrawing();
 	SetWorkingImage(pFocusWindow->pBufferImg);
 	return true;
 }
@@ -155,6 +181,7 @@ void EnforceRedraw()
 
 void ReadyToDraw()
 {
+	WaitForDrawing();
 	isBusyDrawing = true;
 }
 
@@ -162,6 +189,22 @@ void FlushDrawing()
 {
 	*pFocusWindow->pImg = *pFocusWindow->pBufferImg;
 	isBusyDrawing = false;
+}
+
+// 根据窗口大小重新调整该窗口画布大小
+void ResizeWindowImage(EasyWindow* pWnd)
+{
+	RECT rcWnd;
+	for (int i = 0; i < 2; i++)
+	{
+		if (GetClientRect(pWnd->hWnd, &rcWnd))
+		{
+			pWnd->pImg->Resize(rcWnd.right, rcWnd.bottom);
+			pWnd->pBufferImg->Resize(rcWnd.right, rcWnd.bottom);
+			pWnd->isNewSize = true;
+			break;
+		}
+	}
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -194,24 +237,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SIZE:
-	{
-		// 对该窗口对应的画布进行调整
-		RECT rcWnd;
-		for (int i = 0; i < 2; i++)
+		if (pWnd == pFocusWindow)
 		{
-			if (GetClientRect(hwnd, &rcWnd))
-			{
-				if (rcWnd.right == 0)	rcWnd.right = 1;
-				if (rcWnd.bottom == 0)	rcWnd.bottom = 1;
-				pWnd->pImg->Resize(rcWnd.right, rcWnd.bottom);
-				pWnd->pBufferImg->Resize(rcWnd.right, rcWnd.bottom);
-
-				pWnd->isNewSize = true;
-				break;
-			}
+			WaitForDrawing();		// 防止和当前绘图任务发生冲突
+			isBusyDrawing = true;
+			ResizeWindowImage(pWnd);
+			isBusyDrawing = false;
 		}
-	}
-	break;
+		else
+		{
+			ResizeWindowImage(pWnd);
+		}
+		break;
 
 	// 鼠标消息
 	case WM_MOUSEMOVE:
@@ -332,7 +369,7 @@ bool MouseHit_win32()
 
 ExMessage GetMouseMsg_win32()
 {
-	while (!MouseHit_win32()) { Sleep(1); };
+	while (!MouseHit_win32()) { HpSleep(1); };
 	ExMessage msg = pFocusWindow->vecMouseMsg[pFocusWindow->nGetMouseMsgIndex];
 	if (pFocusWindow->nGetMouseMsgIndex < (int)pFocusWindow->vecMouseMsg.size())
 	{
@@ -441,32 +478,7 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg)
 	return r;
 }
 
-// 得到 IMAGE 对象的 HBITMAP
-HBITMAP GetImageHBitmap(IMAGE* img)
-{
-	return CreateBitmap(img->getwidth(), img->getheight(), 1, 32, (void*)GetImageBuffer(img));
-}
-
-// HBITMAP 转 HICON
-HICON HICONFromHBitmap(HBITMAP hBmp)
-{
-	BITMAP bmp;
-	GetObject(hBmp, sizeof(BITMAP), &bmp);
-
-	HBITMAP hbmMask = CreateCompatibleBitmap(GetDC(NULL), bmp.bmWidth, bmp.bmHeight);
-
-	ICONINFO ii = { 0 };
-	ii.fIcon = TRUE;
-	ii.hbmColor = hBmp;
-	ii.hbmMask = hbmMask;
-
-	HICON hIcon = CreateIconIndirect(&ii);
-	DeleteObject(hbmMask);
-
-	return hIcon;
-}
-
-HICON GetDefaultAppIcon()
+IMAGE GetDefaultAppIconImage()
 {
 	IMAGE* old = GetWorkingImage();
 	IMAGE img(32, 32);
@@ -474,7 +486,7 @@ HICON GetDefaultAppIcon()
 
 	setbkcolor(RED);
 	setbkmode(TRANSPARENT);
-	
+
 	settextcolor(WHITE);
 	settextstyle(48, 0, L"Consolas");
 
@@ -486,11 +498,16 @@ HICON GetDefaultAppIcon()
 	outtextxy(4, -8, L'X');
 
 	SetWorkingImage(old);
+	return img;
+}
 
+// 获取默认窗口图标
+HICON GetDefaultAppIcon()
+{
+	IMAGE img = GetDefaultAppIconImage();
 	HBITMAP hBmp = GetImageHBitmap(&img);
 	HICON hIcon = HICONFromHBitmap(hBmp);
 	DeleteObject(hBmp);
-
 	return hIcon;
 }
 
@@ -662,3 +679,42 @@ HWND initgraph_win32(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*Window
 
 
 EASY_WIN32_END
+
+
+
+void HpSleep(int ms)
+{
+	static clock_t oldclock = clock();		// 静态变量，记录上一次 tick
+
+	oldclock += ms * CLOCKS_PER_SEC / 1000;	// 更新 tick
+
+	if (clock() > oldclock)					// 如果已经超时，无需延时
+		oldclock = clock();
+	else
+		while (clock() < oldclock)			// 延时
+			Sleep(1);						// 释放 CPU 控制权，降低 CPU 占用率
+//			Sleep(0);						// 更高精度、更高 CPU 占用率
+}
+
+HBITMAP GetImageHBitmap(IMAGE* img)
+{
+	return CreateBitmap(img->getwidth(), img->getheight(), 1, 32, (void*)GetImageBuffer(img));
+}
+
+HICON HICONFromHBitmap(HBITMAP hBmp)
+{
+	BITMAP bmp;
+	GetObject(hBmp, sizeof(BITMAP), &bmp);
+
+	HBITMAP hbmMask = CreateCompatibleBitmap(GetDC(NULL), bmp.bmWidth, bmp.bmHeight);
+
+	ICONINFO ii = { 0 };
+	ii.fIcon = TRUE;
+	ii.hbmColor = hBmp;
+	ii.hbmMask = hbmMask;
+
+	HICON hIcon = CreateIconIndirect(&ii);
+	DeleteObject(hbmMask);
+
+	return hIcon;
+}

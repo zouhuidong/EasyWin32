@@ -4,11 +4,11 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.4
+//	版　　本：Ver 2.5
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.02.08
+//	最后修改：2022.02.12
 //
 
 #pragma once
@@ -106,10 +106,11 @@ bool SetWorkingWindow(HWND hWnd);
 // 强制重绘当前绘图窗口（正常在 WM_PAINT 消息内绘图不需要使用此函数）
 void EnforceRedraw();
 
-// 宣告开始一次绘制
+// 宣告开始一次绘制（建议使用 BEGIN_TASK 宏）
 void ReadyToDraw();
 
 // 输出绘图缓冲，并表示当前绘图任务告一段落
+//（建议使用 FLUSH_DRAW 或 END_TASK 宏）
 void FlushDrawing();
 
 // 获取已创建的窗口的数组（不含已被关闭的窗口）
@@ -124,6 +125,9 @@ bool GetIsUseCustomAppIcon();
 // 设置是否使用自定义程序图标
 // 默认不会使用自定义图标，而是使用 EasyWin32 自绘图标
 void SetIsUseCustomAppIcon(bool bUse);
+
+// 获取 EasyWin32 自绘默认窗口图标的 IMAGE
+IMAGE GetDefaultAppIconImage();
 
 ////////////****** 鼠标消息相关函数 ******////////////
 
@@ -176,23 +180,26 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 // 空函数
 inline void NullFunc() {}
 
-// 启动一段绘图任务
-#define BEGIN_DRAW(hWnd)\
+// 启动一段（绘图）任务（绘制到当前绘图窗口）
+#define BEGIN_TASK()\
+	{\
+		EasyWin32::ReadyToDraw()
+
+// 启动一段（绘图）任务（指定目标绘图窗口）
+#define BEGIN_TASK_WND(hWnd)\
 	EasyWin32::SetWorkingWindow(hWnd);\
 	if (EasyWin32::GetHWnd_win32() == hWnd)\
 	{\
 		EasyWin32::ReadyToDraw()
 
-// 结束一段绘图任务，并输出绘图缓存（须与 BEGIN_DRAW 连用）
-#define END_DRAW()\
+// 结束一段（绘图）任务，并输出绘图缓存（须与 BEGIN_TASK 连用）
+#define END_TASK()\
 		EasyWin32::FlushDrawing();\
 	}\
 	EasyWin32::NullFunc()
 
-// 强制输出绘图缓存，不与 BEGIN_DRAW 和 END_DRAW 连用
-#define FLUSH_DRAW()\
-	EasyWin32::FlushDrawing();\
-	EasyWin32::EnforceRedraw()
+// 强制输出绘图缓存
+#define FLUSH_DRAW()	EasyWin32::EnforceRedraw()
 
 ////////////****** 键盘消息宏定义 ******////////////
 
@@ -204,9 +211,10 @@ inline void NullFunc() {}
 #define initgraph(w, h)			initgraph_win32(w, h)
 #define closegraph				closegraph_win32
 
+// 默认使用双缓冲，故 BeginBatchDraw 无意义
 #define BeginBatchDraw()
 #define FlushBatchDraw()		FLUSH_DRAW()
-#define EndBatchDraw()
+#define EndBatchDraw()			FLUSH_DRAW()
 
 #define GetHWnd					EasyWin32::GetHWnd_win32
 
@@ -222,6 +230,18 @@ inline void NullFunc() {}
 EASY_WIN32_END
 
 ////////////****** 其他 ******////////////
+
+
+// 精确延时函数(可以精确到 1ms，精度 ±1ms)
+// by yangw80<yw80@qq.com>, 2011-5-4
+void HpSleep(int ms);
+
+// 得到 IMAGE 对象的 HBITMAP
+HBITMAP GetImageHBitmap(IMAGE* img);
+
+// HBITMAP 转 HICON
+HICON HICONFromHBitmap(HBITMAP hBmp);
+
 
 // 常用色彩扩展
 enum COLORS {

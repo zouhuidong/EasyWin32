@@ -37,7 +37,7 @@ bool WndProc1(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 			330, 50, 100, 20,
 			hwnd, (HMENU)IDC_BTN1, hInstance, NULL);
 
-		BEGIN_DRAW(hwnd);	// 使用此宏表示设置自己为目标绘图窗口，并开始一段绘图任务
+		BEGIN_TASK_WND(hwnd);	// 使用此宏表示设置自己为目标绘图窗口，并开始一段绘图任务
 
 		// 绘图状态设置
 		setbkcolor(RGB(250, 250, 250));
@@ -48,14 +48,14 @@ bool WndProc1(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		settextstyle(32, 0, L"system");
 
 		// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
-		// 注意：一段绘图任务结束，必须以此宏结尾（BEGIN_DRAW 和 END_DRAW 必须连用）
-		END_DRAW();
+		// 注意：一段绘图任务结束，必须以此宏结尾（即 BEGIN_TASK_WND 和 END_TASK 必须连用）
+		END_TASK();
 
 		break;
 
 	case WM_PAINT:
 
-		BEGIN_DRAW(hwnd);
+		BEGIN_TASK_WND(hwnd);
 
 		cleardevice();
 		setlinestyle(0, 5);
@@ -64,7 +64,7 @@ bool WndProc1(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		fillrectangle(getwidth() - 170, getheight() - 170, getwidth() - 30, getheight() - 30);
 		outtextxy(130, 150, str);
 
-		END_DRAW();
+		END_TASK();
 
 		break;
 
@@ -77,9 +77,9 @@ bool WndProc1(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 			// 得到输入框文本
 			GetWindowText(hEdit, str, 512);
 
-			BEGIN_DRAW(hwnd);
-			EasyWin32::EnforceRedraw();	// 强制重绘
-			END_DRAW();
+			BEGIN_TASK_WND(hwnd);
+			FLUSH_DRAW();	// 强制重绘
+			END_TASK();
 
 			break;
 		}
@@ -150,13 +150,13 @@ bool WndProc3(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		break;
 
 	case WM_PAINT:
-		BEGIN_DRAW(hwnd);
+		BEGIN_TASK_WND(hwnd);
 
 		// 设置背景色
 		setbkcolor(RGB(240, 240, 240));
 		cleardevice();
 
-		END_DRAW();
+		END_TASK();
 		break;
 
 	default: return true; break;
@@ -186,7 +186,7 @@ bool WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		break;
 
 	case WM_PAINT:
-		BEGIN_DRAW(hwnd);
+		BEGIN_TASK_WND(hwnd);
 
 		// 设置背景色
 		setbkcolor(RGB(240, 240, 240));
@@ -199,7 +199,7 @@ bool WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInst
 		LPCTSTR str = L"EasyX";
 		outtextxy((getwidth() - textwidth(str)) / 2, getheight() - 100, str);
 
-		END_DRAW();
+		END_TASK();
 		break;
 
 	case WM_COMMAND:
@@ -223,9 +223,9 @@ int main()
 {
 	// 创建绘图窗口
 	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc1);
-	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc2);
+	EasyWin32::initgraph_win32(440, 400, 0, L"", WndProc2);
 
-	// 在使用 win32 消息派发的代码结构时，需要调用此函数进行阻塞
+	// 创建窗口完毕，智能阻塞
 	EasyWin32::init_end();
 
 	return 0;

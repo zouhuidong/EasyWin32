@@ -24,40 +24,52 @@ int main()
 	settextstyle(16, 8, _T("Courier"));
 	settextcolor(GREEN);
 
+	// 定时绘制
+	clock_t tRecord = 0;
+
 	while (true)
 	{
 		// 若窗口 1 还存在（未被关闭）
 		if (EasyWin32::isAliveWindow(hWnd1))
 		{
-			// 设置窗口 1 为目标绘图窗口
-			EasyWin32::SetWorkingWindow(hWnd1);
-
-			// 绘制内容：EasyX 官方示例“字符阵”（简化）
-			cleardevice();
-			for (int i = 0; i <= 200; i++)
+			// 一段时间重绘一次
+			if (clock() - tRecord >= 100)
 			{
-				// 在随机位置显示三个随机字母
-				for (int j = 0; j < 3; j++)
-				{
-					int x = (rand() % 80) * 8;
-					int y = (rand() % 20) * 24;
-					char c = (rand() % 26) + 65;
-					outtextxy(x, y, c);
-				}
-			}
+				// 设置窗口 1 为目标绘图窗口，并启动一个绘图任务
+				BEGIN_TASK_WND(hWnd1);
 
-			// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
-			FLUSH_DRAW();
+				// 绘制内容：EasyX 官方示例“字符阵”（简化）
+				cleardevice();
+				for (int i = 0; i <= 200; i++)
+				{
+					// 在随机位置显示三个随机字母
+					for (int j = 0; j < 3; j++)
+					{
+						int x = (rand() % 80) * 8;
+						int y = (rand() % 20) * 24;
+						char c = (rand() % 26) + 65;
+						outtextxy(x, y, c);
+					}
+				}
+
+				// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+				// 注意：一段绘图任务结束，必须以此宏结尾（即 BEGIN_TASK_WND 和 END_TASK 必须连用）
+				END_TASK();
+
+				// 不在窗口过程函数的 WM_PAINT 消息内绘图时，必须强制重绘
+				// 由于没有自定义窗口过程函数，所以当然也要调用此宏强制重绘
+				FLUSH_DRAW();
+			}
 		}
 
 		// 窗口 2
 		if (EasyWin32::isAliveWindow(hWnd2))
 		{
-			EasyWin32::SetWorkingWindow(hWnd2);
+			BEGIN_TASK_WND(hWnd2);
 
 			// 绘制内容：EasyX 官方示例“鼠标操作”（有改动）
 			ExMessage m;
-			if (peekmessage(&m, EM_MOUSE))	// 若成功获取一条鼠标消息
+			while (peekmessage(&m, EM_MOUSE))
 			{
 				switch (m.message)
 				{
@@ -78,6 +90,7 @@ int main()
 				}
 			}
 
+			END_TASK();
 			FLUSH_DRAW();
 		}
 
@@ -88,8 +101,7 @@ int main()
 		}
 
 		// 降低 CPU 占用
-		if (rand() % 777 == 0)
-			Sleep(1);
+		Sleep(50);
 	}
 
 	return 0;
