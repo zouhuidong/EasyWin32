@@ -129,6 +129,12 @@ void SetIsUseCustomAppIcon(bool bUse);
 // 获取 EasyWin32 自绘默认窗口图标的 IMAGE
 IMAGE GetDefaultAppIconImage();
 
+// 获取窗口样式
+long GetWindowStyle();
+
+// 设置窗口样式
+int SetWindowStyle(long lNewStyle);
+
 ////////////****** 鼠标消息相关函数 ******////////////
 
 //// MOUSEMSG 式函数
@@ -175,7 +181,7 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 //	但 ExMessage 系列函数暂时只能获取 EM_MOUSE 即鼠标消息
 //
 
-////////////****** 绘图操作宏定义 ******////////////
+////////////****** 任务指令宏定义 ******////////////
 
 // 空函数
 inline void NullFunc() {}
@@ -199,7 +205,13 @@ inline void NullFunc() {}
 	EasyWin32::NullFunc()
 
 // 强制输出绘图缓存
-#define FLUSH_DRAW()	EasyWin32::EnforceRedraw()
+#define FLUSH_DRAW()			EasyWin32::EnforceRedraw()
+
+////////////****** 窗口样式宏定义 ******////////////
+
+// 是否禁用窗口改变大小
+#define DisableResizing(b)		(b ? EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() & ~WS_SIZEBOX & ~WS_MAXIMIZEBOX) :\
+								EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() | WS_SIZEBOX | WS_MAXIMIZEBOX))
 
 ////////////****** 键盘消息宏定义 ******////////////
 
@@ -208,8 +220,8 @@ inline void NullFunc() {}
 
 ////////////****** EasyX 原生函数的宏替换 ******////////////
 
-#define initgraph(w, h)			initgraph_win32(w, h)
-#define closegraph				closegraph_win32
+#define initgraph(w, h)			EasyWin32::initgraph_win32(w, h)
+#define closegraph				EasyWin32::closegraph_win32
 
 // 默认使用双缓冲，故 BeginBatchDraw 无意义
 #define BeginBatchDraw()

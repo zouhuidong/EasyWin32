@@ -501,6 +501,16 @@ IMAGE GetDefaultAppIconImage()
 	return img;
 }
 
+long GetWindowStyle()
+{
+	return GetWindowLong(pFocusWindow->hWnd, GWL_STYLE);
+}
+
+int SetWindowStyle(long lNewStyle)
+{
+	return SetWindowLong(pFocusWindow->hWnd, GWL_STYLE, lNewStyle);
+}
+
 // 获取默认窗口图标
 HICON GetDefaultAppIcon()
 {
