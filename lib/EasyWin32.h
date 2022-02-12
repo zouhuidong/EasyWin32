@@ -80,6 +80,9 @@ void closegraph_win32(HWND hWnd = NULL);
 // 结束初始化窗口（阻塞）
 void init_end();
 
+// 设置：当窗口都被销毁时，自动退出程序
+void AutoExit();
+
 // 是否还存在未销毁的绘图窗口
 bool isAnyWindow();
 
@@ -88,19 +91,20 @@ bool isInListWindow(HWND hWnd);
 
 // 判断一窗口是否还存在
 // 同 isInListWindow
-inline bool isAliveWindow(HWND hWnd)
-{
-	return isInListWindow(hWnd);
-}
+bool isAliveWindow(HWND hWnd);
 
 // 得到当前绘图窗口的句柄
 HWND GetHWnd_win32();
+
+// 阻塞等待当前绘图任务完成
+void WaitForDrawing();
 
 // 得到当前绘图窗口的详细信息
 EasyWindow GetWorkingWindow();
 
 // 设置当前绘图窗口（同时设置绘图对象为窗口对应的 IMAGE 对象），返回是否设置成功
 // 若有绘图任务进行中，则等待当前绘图任务完成
+// （建议使用 BEGIN_TASK 宏）
 bool SetWorkingWindow(HWND hWnd);
 
 // 强制重绘当前绘图窗口（正常在 WM_PAINT 消息内绘图不需要使用此函数）
@@ -188,13 +192,14 @@ inline void NullFunc() {}
 
 // 启动一段（绘图）任务（绘制到当前绘图窗口）
 #define BEGIN_TASK()\
+	EasyWin32::WaitForDrawing();\
+	if(EasyWin32::isAliveWindow(EasyWin32::GetHWnd_win32()))\
 	{\
 		EasyWin32::ReadyToDraw()
 
 // 启动一段（绘图）任务（指定目标绘图窗口）
 #define BEGIN_TASK_WND(hWnd)\
-	EasyWin32::SetWorkingWindow(hWnd);\
-	if (EasyWin32::GetHWnd_win32() == hWnd)\
+	if (EasyWin32::SetWorkingWindow(hWnd))\
 	{\
 		EasyWin32::ReadyToDraw()
 

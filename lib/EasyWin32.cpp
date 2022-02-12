@@ -47,7 +47,6 @@ bool isUseCustomAppIcon = false;
 
 ////////////****** 函数定义 ******////////////
 
-// 阻塞等待当前绘图任务完成
 void WaitForDrawing()
 {
 	while (isBusyDrawing)
@@ -141,6 +140,18 @@ void init_end()
 	}
 }
 
+// 自动退出程序的实际执行函数
+void AutoExit_main()
+{
+	init_end();
+	exit(0);
+}
+
+void AutoExit()
+{
+	std::thread(AutoExit_main).detach();
+}
+
 bool isAnyWindow()
 {
 	return !vecWindows.empty();
@@ -149,6 +160,11 @@ bool isAnyWindow()
 bool isInListWindow(HWND hWnd)
 {
 	return GetWindowByHWND(hWnd) == -1 ? false : true;
+}
+
+bool isAliveWindow(HWND hWnd)
+{
+	return isInListWindow(hWnd);
 }
 
 HWND GetHWnd_win32()
@@ -690,7 +706,7 @@ HWND initgraph_win32(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*Window
 
 EASY_WIN32_END
 
-
+////////////****** 其他函数 ******////////////
 
 void HpSleep(int ms)
 {
