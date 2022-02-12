@@ -20,7 +20,7 @@ EasyX 库的 Win32 拓展版：解锁多窗口（同时创建多个绘图窗口�
 
 其中使用了我之前写的一个简陋的库 AHGraphics，项目地址：https://github.com/zouhuidong/AHGraphics
 
-但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，拖慢了多窗口绘图的效率，不过这也是 EasyX 之 Easy 所在。
+但是受限于 EasyX 的绘图机制，也就是每次只能对同一个 IMAGE 对象进行绘制，会影响多窗口绘图的效率。
 
 各位看官着急试试了吗？那么先上图看看效果吧：
 
