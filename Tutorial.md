@@ -444,7 +444,7 @@ while(true)
 	END_TASK();
 	FlushBatchDraw();
 	
-	Sleep(20);	//<- Move to here
+	Sleep(20);	//<- Move here
 }
 ```
 
