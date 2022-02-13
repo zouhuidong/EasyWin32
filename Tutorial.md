@@ -410,7 +410,7 @@ while(true)
 {
 	BEGIN_TASK();
 
-	cleardevice();	//<- Move to here
+	cleardevice();	//<- Move here
 	for (int i = 0; i < 10 ; i++)
 	{
 		line(10, i*10, 110, i*10);
