@@ -4,11 +4,11 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.5.1
+//	版　　本：Ver 2.5.2
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.02.13
+//	最后修改：2022.02.26
 //
 
 #pragma once
@@ -97,7 +97,7 @@ bool isAliveWindow(HWND hWnd);
 HWND GetHWnd_win32();
 
 // 阻塞等待当前绘图任务完成
-void WaitForDrawing();
+void WaitForTask();
 
 // 得到当前绘图窗口的详细信息
 EasyWindow GetWorkingWindow();
@@ -111,11 +111,11 @@ bool SetWorkingWindow(HWND hWnd);
 void EnforceRedraw();
 
 // 宣告开始一次绘制（建议使用 BEGIN_TASK 宏）
-void ReadyToDraw();
+void BeginTask();
 
 // 输出绘图缓冲，并表示当前绘图任务告一段落
 //（建议使用 FLUSH_DRAW 或 END_TASK 宏）
-void FlushDrawing();
+void EndTask();
 
 // 获取已创建的窗口的数组（不含已被关闭的窗口）
 std::vector<EasyWindow> GetCreatedWindowList();
@@ -187,27 +187,23 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 
 ////////////****** 任务指令宏定义 ******////////////
 
-// 空函数
-inline void NullFunc() {}
-
 // 启动一段（绘图）任务（绘制到当前绘图窗口）
 #define BEGIN_TASK()\
-	EasyWin32::WaitForDrawing();\
+	EasyWin32::WaitForTask();\
 	if(EasyWin32::isAliveWindow(EasyWin32::GetHWnd_win32()))\
 	{\
-		EasyWin32::ReadyToDraw()
+		EasyWin32::BeginTask()
 
 // 启动一段（绘图）任务（指定目标绘图窗口）
 #define BEGIN_TASK_WND(hWnd)\
 	if (EasyWin32::SetWorkingWindow(hWnd))\
 	{\
-		EasyWin32::ReadyToDraw()
+		EasyWin32::BeginTask()
 
 // 结束一段（绘图）任务，并输出绘图缓存（须与 BEGIN_TASK 连用）
 #define END_TASK()\
-		EasyWin32::FlushDrawing();\
-	}\
-	EasyWin32::NullFunc()
+		EasyWin32::EndTask();\
+	}(0)	/* 此处强制要求加分号 */
 
 // 强制输出绘图缓存
 #define FLUSH_DRAW()			EasyWin32::EnforceRedraw()

@@ -6,7 +6,6 @@
 //
 
 #include "EasyWin32.h"
-#include "AHGraphics.h"
 #include <thread>
 
 // 最大鼠标消息积累量
@@ -28,7 +27,7 @@ wchar_t wstrClassName[] = L"EasyWin32_Class";
 EasyWindow* pFocusWindow = NULL;
 
 // 绘图任务是否忙碌中
-bool isBusyDrawing = false;
+bool isInTask = false;
 
 // 窗口表（可能创建了多个窗口）
 std::vector<EasyWindow> vecWindows;
@@ -47,9 +46,19 @@ bool isUseCustomAppIcon = false;
 
 ////////////****** 函数定义 ******////////////
 
-void WaitForDrawing()
+// 将绘制在 EasyX 中的内容显示到目标窗口上
+void FlushDrawingToWnd(IMAGE* pImg, HWND hWnd)
 {
-	while (isBusyDrawing)
+	HDC hdc = GetDC(hWnd);
+	HDC hdcImg = GetImageHDC(pImg);
+	RECT rctWnd;
+	GetClientRect(hWnd, &rctWnd);
+	BitBlt(hdc, 0, 0, rctWnd.right, rctWnd.bottom, hdcImg, 0, 0, SRCCOPY);
+}
+
+void WaitForTask()
+{
+	while (isInTask)
 	{
 		HpSleep(1);
 	}
@@ -96,10 +105,10 @@ void closegraph_win32(int index)
 	// 防止和当前绘图任务冲突
 	if (pWnd == pFocusWindow)
 	{
-		WaitForDrawing();
-		isBusyDrawing = true;
+		WaitForTask();
+		isInTask = true;
 		DelWindow(index);
-		isBusyDrawing = false;
+		isInTask = false;
 	}
 	else
 	{
@@ -185,7 +194,7 @@ bool SetWorkingWindow(HWND hWnd)
 		return false;
 	}
 	pFocusWindow = &vecWindows[index];
-	WaitForDrawing();
+	WaitForTask();
 	SetWorkingImage(pFocusWindow->pBufferImg);
 	return true;
 }
@@ -195,28 +204,32 @@ void EnforceRedraw()
 	InvalidateRect(pFocusWindow->hWnd, NULL, false);
 }
 
-void ReadyToDraw()
-{
-	WaitForDrawing();
-	isBusyDrawing = true;
-}
-
 void FlushDrawing()
 {
 	*pFocusWindow->pImg = *pFocusWindow->pBufferImg;
-	isBusyDrawing = false;
+}
+
+void BeginTask()
+{
+	isInTask = true;
+}
+
+void EndTask()
+{
+	FlushDrawing();
+	isInTask = false;
 }
 
 // 根据窗口大小重新调整该窗口画布大小
 void ResizeWindowImage(EasyWindow* pWnd)
 {
-	RECT rcWnd;
+	RECT rctWnd;
 	for (int i = 0; i < 2; i++)
 	{
-		if (GetClientRect(pWnd->hWnd, &rcWnd))
+		if (GetClientRect(pWnd->hWnd, &rctWnd))	// 客户区矩形
 		{
-			pWnd->pImg->Resize(rcWnd.right, rcWnd.bottom);
-			pWnd->pBufferImg->Resize(rcWnd.right, rcWnd.bottom);
+			pWnd->pImg->Resize(rctWnd.right, rctWnd.bottom);
+			pWnd->pBufferImg->Resize(rctWnd.right, rctWnd.bottom);
 			pWnd->isNewSize = true;
 			break;
 		}
@@ -255,10 +268,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_SIZE:
 		if (pWnd == pFocusWindow)
 		{
-			WaitForDrawing();		// 防止和当前绘图任务发生冲突
-			isBusyDrawing = true;
+			WaitForTask();		// 防止和当前绘图任务发生冲突
+			isInTask = true;
 			ResizeWindowImage(pWnd);
-			isBusyDrawing = false;
+			isInTask = false;
 		}
 		else
 		{
