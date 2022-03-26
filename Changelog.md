@@ -1,5 +1,11 @@
 # 更新日志
 
+**Ver2.5.5** (2022.03.26)
+
+函数 `EasyWin32::isWindowSizeChanged()` 改为可以传入一个 HWND 类型的参数，用以区分不同的窗口。
+
+---
+
 **Ver2.5.4** (2022.03.26)
 
 新增函数 `EasyWin32::GetWindowExStyle()` 和 `EasyWin32::SetWindowExStyle()`。
