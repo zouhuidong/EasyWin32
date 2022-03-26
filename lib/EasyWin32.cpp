@@ -380,7 +380,8 @@ bool isWindowSizeChanged(HWND hWnd)
 	EasyWindow* pWnd = pFocusWindow;
 	if (hWnd)
 	{
-		pWnd = &vecWindows[GetWindowID(hWnd)];
+		int id = GetWindowID(hWnd);
+		if (id >= 0)	pWnd = &vecWindows[id];
 	}
 	bool b = pWnd->isNewSize;
 	pWnd->isNewSize = false;
