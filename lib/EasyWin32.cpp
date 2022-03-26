@@ -382,6 +382,7 @@ bool isWindowSizeChanged(HWND hWnd)
 	{
 		int id = GetWindowID(hWnd);
 		if (id >= 0)	pWnd = &vecWindows[id];
+		else			return false;
 	}
 	bool b = pWnd->isNewSize;
 	pWnd->isNewSize = false;
