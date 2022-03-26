@@ -36,6 +36,8 @@ VisualStudio 2022 | EasyX_20220116 | Windows 10
 
 *您必须已经配置 EasyX 图形库，如未配置，请访问图形库官网 https://easyx.cn*
 
+**注意：暂不支持 MingW 编译器，请使用 VisualStudio 编译项目。**
+
 ## 配置此库
 
 配置此库很简单，只需要将 lib 文件夹中的所有文件都复制到您的项目目录下，然后添加到您的项目中即可。
