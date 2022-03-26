@@ -11,7 +11,7 @@
 // 最大鼠标消息积累量
 //		若鼠标消息积累量达到此阈值，且消息都已经处理完，将自动清理鼠标消息积累
 //		若尚未处理完所有鼠标消息，则不会自动清理鼠标消息积累
-#define MAX_MOUSEMSG_SIZE 1000
+#define MAX_MOUSEMSG_SIZE 100
 
 EASY_WIN32_BEGIN
 
@@ -56,6 +56,7 @@ void FlushDrawingToWnd(IMAGE* pImg, HWND hWnd)
 	BitBlt(hdc, 0, 0, rctWnd.right, rctWnd.bottom, hdcImg, 0, 0, SRCCOPY);
 }
 
+// 等待当前任务处理完成
 void WaitForTask()
 {
 	while (isInTask)
@@ -66,7 +67,7 @@ void WaitForTask()
 
 // 通过句柄获得此窗口在窗口记录表中的索引
 // 未找到返回 -1
-int GetWindowByHWND(HWND hWnd)
+int GetWindowID(HWND hWnd)
 {
 	int index = -1;
 	for (int i = 0; i < (int)vecWindows.size(); i++)
@@ -92,6 +93,13 @@ void DelWindow(int index)
 
 	DestroyWindow(pWnd->hWnd);
 	PostQuitMessage(NULL);
+
+	// 如果该窗口是子窗口，由于设置了模态窗口，需要将父窗口恢复正常
+	if (pWnd->hParent != NULL)
+	{
+		EnableWindow(pWnd->hParent, true);
+		SetForegroundWindow(pWnd->hParent);
+	}
 
 	// 删除此窗口的记录
 	vecWindows.erase(vecWindows.begin() + index);
@@ -127,7 +135,7 @@ void closegraph_win32(HWND hWnd)
 	}
 	else				// close single
 	{
-		int index = GetWindowByHWND(hWnd);
+		int index = GetWindowID(hWnd);
 		if (index == -1)
 		{
 			return;
@@ -168,7 +176,7 @@ bool isAnyWindow()
 
 bool isInListWindow(HWND hWnd)
 {
-	return GetWindowByHWND(hWnd) == -1 ? false : true;
+	return GetWindowID(hWnd) == -1 ? false : true;
 }
 
 bool isAliveWindow(HWND hWnd)
@@ -188,7 +196,7 @@ EasyWindow GetWorkingWindow()
 
 bool SetWorkingWindow(HWND hWnd)
 {
-	int index = GetWindowByHWND(hWnd);
+	int index = GetWindowID(hWnd);
 	if (index == -1)
 	{
 		return false;
@@ -241,7 +249,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	// 当前传入窗口
 	EasyWindow* pWnd = NULL;
 	bool isNeedDefaultProcess = true;		// 记录是否需要使用默认方法处理消息
-	int indexWnd = GetWindowByHWND(hwnd);	// 该窗口在已记录列表中的索引
+	int indexWnd = GetWindowID(hwnd);	// 该窗口在已记录列表中的索引
 	if (indexWnd == -1)	// 出现未知窗口，则使用默认方法进行处理（此情况按理来说不会出现）
 	{
 		return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -535,9 +543,19 @@ long GetWindowStyle()
 	return GetWindowLong(pFocusWindow->hWnd, GWL_STYLE);
 }
 
+long GetWindowExStyle()
+{
+	return GetWindowLong(pFocusWindow->hWnd, GWL_EXSTYLE);
+}
+
 int SetWindowStyle(long lNewStyle)
 {
 	return SetWindowLong(pFocusWindow->hWnd, GWL_STYLE, lNewStyle);
+}
+
+int SetWindowExStyle(long lNewExStyle)
+{
+	return SetWindowLong(pFocusWindow->hWnd, GWL_EXSTYLE, lNewExStyle);
 }
 
 // 获取默认窗口图标
@@ -586,7 +604,7 @@ void RegisterWndClass()
 	}
 }
 
-// 真正创建窗口的函数
+// 真正创建窗口的函数（阻塞）
 void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent, int* nDoneFlag)
 {
 	static int nWndCount;		// 窗口计数
@@ -658,6 +676,7 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 		}
 	}
 
+	wnd.hParent = hParent;
 	wnd.pImg = new IMAGE(w, h);
 	wnd.pBufferImg = new IMAGE(w, h);
 	wnd.funcWndProc = WindowProcess;
@@ -678,14 +697,14 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 		nFrameW = (rcWnd.right - rcWnd.left) - rcClient.right;
 		nFrameH = (rcWnd.bottom - rcWnd.top) - rcClient.bottom;
 	}
+
+	nWndCount++;
+	*nDoneFlag = 1;
+
 	SetWindowPos(wnd.hWnd, HWND_TOP, 0, 0, w + nFrameW, h + nFrameH, SWP_NOMOVE);
 
 	ShowWindow(wnd.hWnd, SW_SHOWNORMAL);
 	UpdateWindow(wnd.hWnd);
-
-	nWndCount++;
-
-	*nDoneFlag = 1;
 
 	MSG Msg;
 	while (GetMessage(&Msg, NULL, NULL, NULL) > 0)
@@ -697,23 +716,20 @@ void InitWindow(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProce
 
 HWND initgraph_win32(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent)
 {
+	// 标记是否已经完成窗口创建任务
 	int nDoneFlag = 0;
-	if (!hParent)
-	{
-		std::thread(InitWindow, w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag).detach();
-		while (nDoneFlag == 0) { Sleep(10); };	// 等待窗口创建完成
-		if (nDoneFlag == -1)	return NULL;
-		else					return pFocusWindow->hWnd;
-	}
-	else
-	{
-		EnableWindow(hParent, false);
-		InitWindow(w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag);
-		EnableWindow(hParent, true);
-		SetForegroundWindow(hParent);
 
-		return NULL;
+	// 存在父窗口时，实现模态窗口
+	if (hParent)
+	{
+		EnableWindow(hParent, false);	// 禁用父窗口
+		// 该窗口被销毁后，父窗口将会被设置恢复正常
 	}
+
+	std::thread(InitWindow, w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag).detach();
+	while (nDoneFlag == 0) { Sleep(10); };	// 等待窗口创建完成
+	if (nDoneFlag == -1)	return NULL;
+	else					return pFocusWindow->hWnd;
 }
 
 

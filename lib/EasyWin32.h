@@ -4,11 +4,11 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.5.2
+//	版　　本：Ver 2.5.4
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.02.26
+//	最后修改：2022.03.26
 //
 
 #pragma once
@@ -28,15 +28,16 @@ EASY_WIN32_BEGIN
 // 窗口
 struct EasyWindow
 {
-	HWND hWnd;			// 窗口句柄
-	IMAGE* pImg;		// 窗口图像
-	IMAGE* pBufferImg;	// 缓冲区
-	bool(*funcWndProc)(HWND, UINT, WPARAM, LPARAM, HINSTANCE);	// 窗口消息处理函数
+	HWND hWnd;							// 窗口句柄
+	HWND hParent;						// 父窗口句柄
+	IMAGE* pImg;						// 窗口图像
+	IMAGE* pBufferImg;					// 图像缓冲区
+										// 窗口消息处理函数
+	bool(*funcWndProc)(HWND, UINT, WPARAM, LPARAM, HINSTANCE);
 	std::vector<ExMessage> vecMouseMsg;	// 鼠标消息队列
-	int nGetMouseMsgIndex;	// 获取鼠标消息的进度索引（现在获取到了数组中的哪一条）
-	bool isNewSize;			// 窗口大小是否改变
-
-	bool isSentCreateMsg;	// 是否发送了 WM_CREATE 的消息
+	int nGetMouseMsgIndex;				// 获取鼠标消息的进度索引（现在获取到了数组中的哪一条）
+	bool isNewSize;						// 窗口大小是否改变
+	bool isSentCreateMsg;				// 是否模拟发送了 WM_CREATE 的消息
 };
 
 ////////////****** 窗体相关函数 ******////////////
@@ -46,7 +47,7 @@ struct EasyWindow
 // isCmd			是否显示 cmd 窗口（如果是控制台应用程序）
 // strWndTitle		窗口标题
 // WindowProcess	窗口消息处理函数的指针，为空表示使用默认消息处理函数（详见头文件中“窗口消息处理函数规范”）
-// hParent			父窗口句柄，为空则表示该窗口独立存在（若填写，该窗口将作为模态窗口存在）
+// hParent			父窗口句柄，为空则表示该窗口独立存在（若填写，该窗口将成为模态窗口）
 HWND initgraph_win32(
 	int w = 640,
 	int h = 480,
@@ -71,7 +72,7 @@ HWND initgraph_win32(
 // 
 // 注意事项：
 // 1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息
-// 2. 接受 WM_CLOSE 消息时，返回 true 或 false 表示是否关闭窗口，但如果关闭窗口，您无需编写销魂窗口的代码
+// 2. 接受 WM_CLOSE 消息时，返回 true 或 false 表示是否关闭窗口，但如果关闭窗口，您无需编写销毁窗口的代码
 //
 
 // 关闭某一绘图窗口，若句柄为 NULL 则关闭所有绘图窗口
@@ -133,11 +134,17 @@ void SetIsUseCustomAppIcon(bool bUse);
 // 获取 EasyWin32 自绘默认窗口图标的 IMAGE
 IMAGE GetDefaultAppIconImage();
 
-// 获取窗口样式
+// 获取当前窗口样式
 long GetWindowStyle();
 
-// 设置窗口样式
+// 设置当前窗口样式
 int SetWindowStyle(long lNewStyle);
+
+// 获取当前窗口扩展样式
+long GetWindowExStyle();
+
+// 设置当前窗口扩展样式
+int SetWindowExStyle(long lNewExStyle);
 
 ////////////****** 鼠标消息相关函数 ******////////////
 
@@ -210,7 +217,7 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 
 ////////////****** 窗口样式宏定义 ******////////////
 
-// 是否禁用窗口改变大小
+// 是否禁用当前窗口改变大小
 #define DisableResizing(b)		(b ? EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() & ~WS_SIZEBOX & ~WS_MAXIMIZEBOX) :\
 								EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() | WS_SIZEBOX | WS_MAXIMIZEBOX))
 
