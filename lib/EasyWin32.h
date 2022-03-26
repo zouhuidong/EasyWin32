@@ -4,7 +4,7 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.5.4
+//	版　　本：Ver 2.5.5
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
@@ -121,8 +121,8 @@ void EndTask();
 // 获取已创建的窗口的数组（不含已被关闭的窗口）
 std::vector<EasyWindow> GetCreatedWindowList();
 
-// 绘图窗口大小是否改变
-bool isWindowSizeChanged();
+// 判断窗口大小是否改变
+bool isWindowSizeChanged(HWND hWnd = NULL);
 
 // 获取是否使用自定义程序图标
 bool GetIsUseCustomAppIcon();

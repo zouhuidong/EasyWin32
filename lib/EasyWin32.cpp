@@ -375,10 +375,15 @@ std::vector<EasyWindow> GetCreatedWindowList()
 	return vecWindows;
 }
 
-bool isWindowSizeChanged()
+bool isWindowSizeChanged(HWND hWnd)
 {
-	bool b = pFocusWindow->isNewSize;
-	pFocusWindow->isNewSize = false;
+	EasyWindow* pWnd = pFocusWindow;
+	if (hWnd)
+	{
+		pWnd = &vecWindows[GetWindowID(hWnd)];
+	}
+	bool b = pWnd->isNewSize;
+	pWnd->isNewSize = false;
 	return b;
 }
 
