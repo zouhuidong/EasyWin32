@@ -94,13 +94,6 @@ void DelWindow(int index)
 	DestroyWindow(pWnd->hWnd);
 	PostQuitMessage(NULL);
 
-	// 如果该窗口是子窗口，由于设置了模态窗口，需要将父窗口恢复正常
-	if (pWnd->hParent != NULL)
-	{
-		EnableWindow(pWnd->hParent, true);
-		SetForegroundWindow(pWnd->hParent);
-	}
-
 	// 删除此窗口的记录
 	vecWindows.erase(vecWindows.begin() + index);
 }
@@ -109,6 +102,13 @@ void DelWindow(int index)
 void closegraph_win32(int index)
 {
 	EasyWindow* pWnd = &vecWindows[index];
+
+	// 如果该窗口是子窗口，由于设置了模态窗口，需要将父窗口恢复正常
+	if (pWnd->hParent != NULL)
+	{
+		EnableWindow(pWnd->hParent, true);
+		SetForegroundWindow(pWnd->hParent);
+	}
 
 	// 防止和当前绘图任务冲突
 	if (pWnd == pFocusWindow)
@@ -126,22 +126,26 @@ void closegraph_win32(int index)
 
 void closegraph_win32(HWND hWnd)
 {
-	if (hWnd == NULL)	// close all
-	{
-		for (int i = 0; i < (int)vecWindows.size(); i++)
-		{
-			closegraph_win32(i);
-		}
-	}
-	else				// close single
-	{
-		int index = GetWindowID(hWnd);
-		if (index == -1)
-		{
-			return;
-		}
-		closegraph_win32(index);
-	}
+	//if (hWnd == NULL)	// close all
+	//{
+	//	for (int i = 0; i < (int)vecWindows.size(); i++)
+	//	{
+	//		closegraph_win32(i);
+	//	}
+	//}
+	//else				// close single
+	//{
+	//	int index = GetWindowID(hWnd);
+	//	if (index == -1)
+	//	{
+	//		return;
+	//	}
+	//	closegraph_win32(index);
+	//}
+
+	// 必须交由原线程销毁窗口
+	// 特殊标记 wParam 为 1，表示程序命令销毁窗口
+	SendMessage(hWnd, WM_DESTROY, 1, 0);
 }
 
 void init_end()
@@ -327,6 +331,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		SendMessage(hConsole, msg, wParam, lParam);
 		break;
 
+	case WM_DESTROY:
+		// WM_DESTROY 消息本无参数，若出现参数则是程序命令销毁窗口
+		if (wParam)
+		{
+			closegraph_win32(indexWnd);
+		}
+		break;
 	}
 
 	// 若有独立的消息处理函数则调用
@@ -734,9 +745,20 @@ HWND initgraph_win32(int w, int h, bool isCmd, LPCTSTR strWndTitle, bool(*Window
 	}
 
 	std::thread(InitWindow, w, h, isCmd, strWndTitle, WindowProcess, hParent, &nDoneFlag).detach();
+
 	while (nDoneFlag == 0) { Sleep(10); };	// 等待窗口创建完成
-	if (nDoneFlag == -1)	return NULL;
-	else					return pFocusWindow->hWnd;
+	if (nDoneFlag == -1)
+	{
+		if (hParent)	// 创建子窗口失败，则须将父窗口恢复正常
+		{
+			EnableWindow(hParent, true);
+		}
+		return NULL;
+	}
+	else
+	{
+		return pFocusWindow->hWnd;
+	}
 }
 
 
