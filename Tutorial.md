@@ -510,7 +510,7 @@ while(true)
 
 如果您想改变窗口样式，例如取消最大化按钮，禁止用户拉伸窗口，您可以使用 Win32 API `SetWindowLong` 函数，这需要一些 Win32 知识。
 
-`SetWindowLong` 函数不仅仅能够设置窗口的样式，还可以做很多其他事情，但是设置窗口样式是比较常用的功能，所以 EasyWin32 将其做了简单封装。就设置窗口样式而言，您可以调用 `EasyWin32::GetWindowStyle()` 获取当前窗口样式，调用 `EasyWin32::SetWindowStyle()` 设置当前窗口样式。
+`SetWindowLong` 函数不仅仅能够设置窗口的样式，还可以做很多其他事情，但是设置窗口样式是比较常用的功能，所以 EasyWin32 将其做了简单封装。就设置窗口样式而言，您可以调用 `EasyWin32::GetWindowStyle()` 获取当前窗口样式，调用 `EasyWin32::SetWindowStyle()` 设置当前窗口样式（或另一套适用用 ExStyle 的函数，详见头文件）。
 
 但是如果您只是想取消（或启用）最大化按钮，并禁止（或允许）用户拉伸窗口，最简单的方式是使用 EasyWin32 定义的宏 `DisableResizing()`，传入布尔型参数，表示是否禁用当前窗口调整大小。
 
