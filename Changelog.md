@@ -1,5 +1,37 @@
 # 更新日志
 
+**Ver2.6.0** (2022.04.03)
+
+* `EasyWindow` 结构体新增成员 `isBusyProcessing`，表示是否正在处理内部消息
+ 
+  新增 `WaitForProcessing` 函数用以等待内部消息处理。
+   
+  此举增强了程序稳定性，防止了内部消息处理与程序执行产生冲突而导致崩溃。
+   
+* 修复绘图内容向窗口映射时内存泄漏的 bug。
+
+* 修复了 `closegraph_win32` 无法关闭所有窗口的 bug。
+
+* 优化了双缓冲算法，提升了绘图内容映射速率。
+
+* 窗口图标相关函数更名为 `GetCustomIconState`，`SetCustomIcon` 和`GetDefaultIconImage`。
+
+  修复了无法加载资源图标作为程序图标的 bug，并支持了大小图标的分别设置。
+  
+* 新增绘图窗口初始化参数 `EW_NORMAL`（0），表示以正常方式创建窗口。
+  
+* `initgraph_win32` 函数的布尔型参数 `isCmd` 更名为整型参数 `flag`，与原生 EasyX 契合度更高
+
+  默认将隐藏控制台窗口，新建窗口时传入 `EW_NORMAL` 不会改变当前的控制台窗口显示状态，若传入 `EW_SHOWCONSOLE` 则会显示控制台（如果存在）。
+
+* 删除 `isInListWindow` 函数，仅保留 `isAliveWindow` 函数
+
+* 新增 `rectangle_RECT` 系列快捷宏
+
+* 新增颜色 `CLASSICGRAY`
+
+---
+
 **Ver2.5.6** (2022.03.27)
 
 修复 `EasyWin32::closegraph_win32()` 函数销毁绘图窗口失败的 bug。
