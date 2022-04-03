@@ -53,7 +53,7 @@ EasyWin32.h 中注释：
 //
 // 窗口消息处理函数规范
 // 
-// 函数标准形态：bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
+// 函数标准形态：bool WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
 // 
 // 注意：
 // 相比于标准的 Win32 窗口过程函数，增加了一个 HINSTANCE 类型形参。
@@ -382,7 +382,7 @@ int main()
 
 EasyWin32 将自绘一个 EasyX 的图标作为程序图标，这个图标模仿的是 EasyX 官网的页面图标。
 
-如果想要使用自己的图标，必须先在程序第一次创建窗口前就设置 `EasyWin32::SetIsUseCustomAppIcon(true);`。
+如果想要使用自己的图标，必须先在程序第一次创建窗口前就调用 `EasyWin32::SetCustomIcon` 函数，并传入自己的图标资源 ID。
 
 ## 在原有 EasyX 项目上使用 EasyWin32
 
