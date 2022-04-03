@@ -4,11 +4,11 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.5.6
+//	版　　本：Ver 2.6.0
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.03.27
+//	最后修改：2022.04.03
 //
 
 #pragma once
@@ -16,7 +16,10 @@
 #include <graphics.h>
 #include <vector>
 #include <string>
+#include <thread>
 
+// 补充绘图窗口初始化参数
+#define EW_NORMAL 0
 
 #define EASY_WIN32_BEGIN	namespace EasyWin32 {
 #define EASY_WIN32_END		};
@@ -38,6 +41,7 @@ struct EasyWindow
 	int nGetMouseMsgIndex;				// 获取鼠标消息的进度索引（现在获取到了数组中的哪一条）
 	bool isNewSize;						// 窗口大小是否改变
 	bool isSentCreateMsg;				// 是否模拟发送了 WM_CREATE 的消息
+	bool isBusyProcessing;				// 是否正忙于处理内部消息
 };
 
 ////////////****** 窗体相关函数 ******////////////
@@ -51,7 +55,7 @@ struct EasyWindow
 HWND initgraph_win32(
 	int w = 640,
 	int h = 480,
-	bool isCmd = 0,
+	int flag = EW_NORMAL,
 	LPCTSTR strWndTitle = L"",
 	bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE) = NULL,
 	HWND hParent = NULL
@@ -60,7 +64,7 @@ HWND initgraph_win32(
 //
 // 窗口消息处理函数规范
 // 
-// 函数标准形态：bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
+// 函数标准形态：bool WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
 // 
 // 注意：
 // 相比于标准的 Win32 窗口过程函数，增加了一个 HINSTANCE 类型形参。
@@ -87,11 +91,7 @@ void AutoExit();
 // 是否还存在未销毁的绘图窗口
 bool isAnyWindow();
 
-// 判断一窗口是否在已创建的窗口列表中（不含已被关闭的窗口）
-bool isInListWindow(HWND hWnd);
-
-// 判断一窗口是否还存在
-// 同 isInListWindow
+// 判断一窗口是否还存在（不含已被关闭的窗口）
 bool isAliveWindow(HWND hWnd);
 
 // 得到当前绘图窗口的句柄
@@ -99,6 +99,9 @@ HWND GetHWnd_win32();
 
 // 阻塞等待当前绘图任务完成
 void WaitForTask();
+
+// 等待窗口内部消息处理完成
+void WaitForProcessing(EasyWindow* pWnd);
 
 // 得到当前绘图窗口的详细信息
 EasyWindow GetWorkingWindow();
@@ -124,15 +127,16 @@ std::vector<EasyWindow> GetCreatedWindowList();
 // 判断窗口大小是否改变
 bool isWindowSizeChanged(HWND hWnd = NULL);
 
-// 获取是否使用自定义程序图标
-bool GetIsUseCustomAppIcon();
+// 判断自定义程序图标的启用状态
+bool GetCustomIconState();
 
-// 设置是否使用自定义程序图标
-// 默认不会使用自定义图标，而是使用 EasyWin32 自绘图标
-void SetIsUseCustomAppIcon(bool bUse);
+// 使用图标资源作为程序图标
+// 参数传入图标资源 ID（大图标和小图标）
+// 注：必须在第一次创建窗口前就调用该函数才能生效。默认情况下，程序将自绘 EasyX 程序图标
+void SetCustomIcon(int nIcon, int nIconSm);
 
 // 获取 EasyWin32 自绘默认窗口图标的 IMAGE
-IMAGE GetDefaultAppIconImage();
+IMAGE GetDefaultIconImage();
 
 // 获取当前窗口样式
 long GetWindowStyle();
@@ -192,6 +196,8 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 //	但 ExMessage 系列函数暂时只能获取 EM_MOUSE 即鼠标消息
 //
 
+EASY_WIN32_END
+
 ////////////****** 任务指令宏定义 ******////////////
 
 // 启动一段（绘图）任务（绘制到当前绘图窗口）
@@ -203,6 +209,7 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 
 // 启动一段（绘图）任务（指定目标绘图窗口）
 #define BEGIN_TASK_WND(hWnd)\
+	/* 设置工作窗口时将自动等待当前任务结束 */\
 	if (EasyWin32::SetWorkingWindow(hWnd))\
 	{\
 		EasyWin32::BeginTask()
@@ -212,7 +219,7 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 		EasyWin32::EndTask();\
 	}(0)	/* 此处强制要求加分号 */
 
-// 强制输出绘图缓存
+// 要求窗口重绘
 #define FLUSH_DRAW()			EasyWin32::EnforceRedraw()
 
 ////////////****** 窗口样式宏定义 ******////////////
@@ -250,9 +257,14 @@ bool PeekMouseMsg_win32_old(MOUSEMSG* pMsg, bool bRemoveMsg = true);
 #define PeekMouseMsg			EasyWin32::PeekMouseMsg_win32_old
 #define FlushMouseMsgBuffer		EasyWin32::FlushMouseMsgBuffer_win32
 
-EASY_WIN32_END
+////////////****** 其他宏定义 ******////////////
 
-////////////****** 其他 ******////////////
+#define rectangle_RECT(rct)			rectangle(rct.left,rct.top,rct.right,rct.bottom);
+#define fillrectangle_RECT(rct)		fillrectangle(rct.left,rct.top,rct.right,rct.bottom);
+#define solidrectangle_RECT(rct)	solidrectangle(rct.left,rct.top,rct.right,rct.bottom);
+
+
+////////////****** 其他函数 ******////////////
 
 
 // 精确延时函数(可以精确到 1ms，精度 ±1ms)
@@ -264,7 +276,6 @@ HBITMAP GetImageHBitmap(IMAGE* img);
 
 // HBITMAP 转 HICON
 HICON HICONFromHBitmap(HBITMAP hBmp);
-
 
 // 常用色彩扩展
 enum COLORS {
@@ -292,6 +303,9 @@ enum COLORS {
 	STEELBLUE = RGB(0x46, 0x82, 0xB4),
 	TOMATO = RGB(0xFF, 0x63, 0x47),
 	WHITESMOKE = RGB(0xF5, 0xF5, 0xF5),
-	YELLOWGREEN = RGB(0x9A, 0xCD, 0x32)
+	YELLOWGREEN = RGB(0x9A, 0xCD, 0x32),
+
+	// Windows 经典灰
+	CLASSICGRAY = RGB(0xF0, 0xF0, 0xF0)
 };
 
