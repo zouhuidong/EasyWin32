@@ -4,11 +4,11 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.6.0
+//	版　　本：Ver 2.6.1
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.04.03
+//	最后修改：2022.04.10
 //
 
 #pragma once
