@@ -1,229 +1,78 @@
 # 开始使用 EasyWin32
 
-EasyWin32 相对 EasyX 的新增函数并不多，易于上手。
+EasyWin32 基于 EasyX 构建，易于上手。
+
+**配置库**
 
 确保您在项目中加入了 EasyWin32 的文件，如果还没有，请看 [README.md](./README.md#配置此库)。
 
 注意，并非所有环境都能配置 EasyWin32，推荐使用和我一样的编译环境，否则可能报错，编译环境见 [README.md](./README.md#编译环境)。
 
-由于该库函数并不多，且 EasyWin32.h 中的函数声明都有详细的注释，所以暂时不提供库文档，**请您自行查阅头文件来了解具体的各个函数的功能**。
+**库函数文档**
 
-该库支持您使用顺序代码结构和 Win32 消息派发的代码结构。
+由于该库函数并不多，且 EasyWin32.h 中的函数声明都有详细的注释，所以暂时不提供库函数文档，请您自行查阅头文件来了解具体的各个函数的功能。
 
-> [顺序代码结构的具体例子](./samples/Sample2/main.cpp)
+**原有项目使用 EasyWin32**
 
-> [Win32 消息派发的代码结构对应的具体例子](./samples/Sample1/main.cpp)
+EasyWin32 的高兼容性支持您轻松地将原先的 EasyX 项目配置上 EasyWin32。
 
-> [二者结合的例子](./samples/Sample3/main.cpp)
+关于这部分内容，请看 [这里](#在原有-easyx-项目上使用-easywin32)
 
-而且，EasyWin32 的高兼容性支持您轻松地将原先的 EasyX 项目配置上 EasyWin32。
+## 例子 1：写起来和 EasyX 无甚区别
 
-## 代码结构
-
-### Win32 消息派发式代码结构
-
-如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，就像下面这样：
+请看这段调用 EasyWin32 的代码：
 
 ```cpp
 #include "EasyWin32.h"
-
-// 窗口过程函数
-bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
-{
-	switch (msg)
-	{
-	default: return true; break;	// 使用默认方法处理其余消息
-	}
-	return false;
-}
+#include <conio.h>
 
 int main()
 {
-	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
-	EasyWin32::init_end();					// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
-	return 0;
-}
+	EasyWin32::initgraph_win32();
 
-```
+	BEGIN_TASK();
 
-窗口过程函数的返回值是布尔类型，标识是否需要使用系统默认方法处理该消息。
+	settextstyle(32, 0, L"Consolas");
+	settextcolor(LIGHTGREEN);
+	outtextxy(20, 70, L"Hello EasyWin32");
+	settextstyle(26, 0, L"system");
+	settextcolor(GREEN);
+	outtextxy(20, 110, L"Any key to continue");
 
-EasyWin32.h 中注释：
-```
-//
-// 窗口消息处理函数规范
-// 
-// 函数标准形态：bool WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance);
-// 
-// 注意：
-// 相比于标准的 Win32 窗口过程函数，增加了一个 HINSTANCE 类型形参。
-// 返回值的意义也不相同，见下文。
-// 
-// 返回值：
-// true		表示使用系统默认方法处理该消息
-// false	表示不再需要系统默认方法处理该消息
-// 
-// 注意事项：
-// 1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息
-// 2. 接受 WM_CLOSE 消息时，返回 true 或 false 表示是否关闭窗口，但如果关闭窗口，您无需编写销毁窗口的代码
-//
-```
+	END_TASK();
+	FLUSH_DRAW();
 
-由于 `main` 函数中调用了 `EasyWin32::init_end()` 函数进行阻塞，这个函数会自动判断窗口是否还存在，所以不需要再使用 `EasyWin32::isAnyWindow()` 进行判断。
-
-然后在 `WndProc` 中创建按钮（可以是其他控件，需要运用 Win32 的知识，这里以按钮举例）：
-
-```cpp
-#include "EasyWin32.h"
-
-// 控件 ID
-#define IDC_BTN 100
-
-// 窗口过程函数
-bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
-{
-	switch (msg)
+	while (true)
 	{
-	case WM_CREATE:
-
-		// 创建按钮
-		CreateWindow(L"button", L"Button",
-			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
-			200, 100, 100, 60,
-			hwnd, (HMENU)IDC_BTN, hInstance, NULL);
-
-		break;
-	default: return true; break;	// 使用默认方法处理其余消息
-	}
-	return false;
-}
-
-int main()
-{
-	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
-	EasyWin32::init_end();									// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
-	return 0;
-}
-
-```
-
-创建按钮完毕，接下来为其添加按键响应：
-
-```cpp
-#include "EasyWin32.h"
-
-// 控件 ID
-#define IDC_BTN 100
-
-// 存储文本
-wchar_t str[128] = { 0 };
-
-// 窗口过程函数
-bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
-{
-	switch (msg)
-	{
-	case WM_CREATE:
-
-		// 创建按钮
-		CreateWindow(L"button", L"Button",
-			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
-			200, 100, 100, 60,
-			hwnd, (HMENU)IDC_BTN, hInstance, NULL);
-
-		break;
-
-	case WM_PAINT:
-
-		BEGIN_TASK_WND(hwnd);	// 将绘图窗口设为自己，并启动一次绘图任务
-		setbkcolor(0xf0f0f0);	// 设置背景色
-		settextcolor(BLUE);		// 设置文本色
-		cleardevice();			// 清屏
-		outtextxy(20, 20, str);	// 输出文字
-		END_TASK();				// 结束此次绘图任务
-
-		break;
-
-	case WM_COMMAND:
-		switch (LOWORD(wParam))
+		// 按任意键关闭窗口
+		if (_kbhit())
 		{
-		case IDC_BTN:	// 按下按钮
-
-			BEGIN_TASK_WND(hwnd);
-			wsprintf(str, L"按下了按钮");
-			FLUSH_DRAW();		// 在非 WM_PAINT 消息区域，如需要立即刷新，需要强制重绘
-			END_TASK();
-
+			EasyWin32::closegraph_win32();
 			break;
 		}
 
-	default: return true; break;	// 使用默认方法处理其余消息
-	}
-	return false;
-}
+		// 若窗口被关闭，退出程序
+		if (!EasyWin32::isAnyWindow())
+		{
+			break;
+		}
 
-int main()
-{
-	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
-	EasyWin32::init_end();									// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
+		Sleep(10);
+	}
+
 	return 0;
 }
 ```
 
-执行效果：
+很简单吧~其中大部分的函数都是 EasyX 的原生函数。
 
-![示例图片](./screenshot/4.png)
+为了更简洁地展示这个例子，上面的代码中删去了大量的详细注释。对于代码中 EasyWin32 的新增函数，将在稍后解释，或者可以查看含注释的源代码：[源码](./samples/Start/main.cpp)。
 
-需要注意的是：每次执行绘图任务（无论是设置绘图属性还是绘图），或者是诸如鼠标消息获取的任务，都需要在每次操作前使用 `BEGIN_TASK()` 或 `BEGIN_TASK_WND(窗口句柄)`，前者无需指定窗口，直接在当前活动窗口上执行任务，但后者需要指定窗口，程序会先将目标绘图窗口转向您设置的窗口，然后再执行任务。
+## 例子 2：启动多个绘图窗口！
 
-必须在任务执行结束后调用 `END_TASK()`，它和 `BEGIN_TASK()`（或`BEGIN_TASK_WND()`） 配成一对。
-
-事实上，`BEGIN_TASK()` 和 `END_TASK()` 是如下代码的宏定义：
+[源代码](./samples/Sample2/main.cpp)：
 
 ```cpp
-if (EasyWin32::SetWorkingWindow(hWnd))
-{
-	EasyWin32::BeginTask();
-
-	// TODO: Add your code here.
-
-	EasyWin32::EndTask();
-}
-```
-
-在 `BEGIN_TASK()` 和 `END_TASK()` 中间编写的代码就相当于写在了上面代码中的 TODO 位置，这也意味着这些代码是**局域代码**。
-
-您当然可以使用上面这种写法，只不过使用 `BEGIN_TASK()` 和 `END_TASK()` 方便一点。
-
-**经常被忽略的要点**
-
-从上面的代码可以看出，有可能 `EasyWin32::SetWorkingWindow()` 是会失败的，所以如果任务执行失败对后续的代码会产生影响，那么一定要在后续的代码中根据具体情况判断是否成功执行了任务，或者使用 `BEGIN_TASK()` 和 `END_TASK()` 宏的展开写法，并加上一个 `else` 语句。
-
-**记住！** 任务确实可能执行失败，所以如果执行失败对后续的代码会产生影响，则一定要判断是否成功执行了任务，否则可能导致程序某些时候突然意外崩溃，这时再排查代码错误是很麻烦的。
-
-EasyWin32 默认就是双缓冲的，所以无需再调用 EasyX 原生的 `BeginBatchDraw` 系列函数。不同于它们的是，`BEGIN_TASK()` 系列宏代表的是一个任务的起始和结束，包括但不限于绘图任务，而 `FLUSH_DRAW()` 则是强制重绘，所以请不要混淆。
-
-还有一点需要注意的是，EasyX 原生的 `BeginBatchDraw` 一系列函数都是面向绘图窗口的，也就是说，如果处在 IMAGE 对象内部，`BeginBatchDraw` 系列函数会出错，但是在 EasyWin32 中我对他们都宏定义了一遍，就算它们被调用了也不会造成影响。
-
-其实，调用 `BEGIN_TASK()` 系列宏来表示一个任务的起始和结束，是为了协调多个窗口同时存在的情况，因为多个窗口可能抢占绘图权，所以您需要在执行一个任务时进行标识，使得多个窗口有序绘图。
-
-如果是在顺序代码结构中，很多时候，用户操作导致的关闭窗口，或者是窗口拉伸导致的画布调整，也很有可能直接掐断您的绘图任务，如果您不使用这些宏来标识您正在进行绘图任务的话，就会导致两个任务互相冲突，导致程序崩溃。
-
-最后提一句，需要具备一些 Win32 编程基础，才能编写 Win32 消息派发式的代码。推荐一个 Win32 学习网站：http://winprog.org/tutorial/zh/start_cn.html 。
-
-### 顺序代码结构
-
-这应该是大家喜闻乐见的写法，因为通常使用 EasyX 的程序都是这样编写的。下面的代码来自 [源码](./samples/Sample2/main.cpp)：
-```cpp
-////////////////////////////////
-//
-//	EasyWin32 使用示例
-//
-//	1. 使用顺序代码结构
-//	2. 创建了多个绘图窗口
-//	3. 展示了鼠标消息的获取
-//
-
 #include "EasyWin32.h"
 #include <time.h>
 
@@ -326,51 +175,287 @@ int main()
 
 ```
 
-代码其实很简单，注释也很详细，这种“顺序代码结构”与上面那种 Win32 式的代码结构最大的区别就是不需要创建 `WndProc`，即窗口过程函数。
-
-接下来我为大家剖析这段代码。
+这段代码中创建了两个窗口，并且每个窗口都演示了一个 EasyX 的官方示例程序。
 
 **判断窗口存在**
 
-首先，由于创建了两个窗口，那么在主循环的绘图中，您需要分两个 `if` 语句分别判断窗口是否还存在，因为窗口可能被用户关闭。若窗口还存在，才继续绘图。
-
----
-
-**设置绘图窗口、输出绘图缓冲**
-
-在 `if` 语句内部，执行绘图任务时，需要调用 `BEGIN_TASK`（或 `BEGIN_TASK_WND`） 宏，任务结束时，使用 `END_TASK()` 宏。由于这部分内容在上一节中讲过，所以不再赘述。
-
-不同与 Win32 消息派发式的代码结构，顺序代码结构中，由于没有创建窗口过程函数，所以没有在正常的 WM_PAINT 消息中绘图，这就需要在每次绘图任务结束时，再调用 `FLUSH_DRAW()` 宏，以强制重绘。
-
----
-
-**鼠标消息、键盘消息**
-
-鼠标消息兼容旧版 MOUSEMSG，同时支持 ExMessage（ExMessage 系列函数暂时只能获取 EM_MOUSE 消息，即鼠标消息）。
-
-按键消息支持直接使用 `_getch` 一系列函数获取。
-
-注意：使用鼠标消息相关函数时，同样也需要使用 `BEGIN_TASK` 系列宏来标识进行一个任务。
-
-有些人可能程序在一个主循环中进行，每次循环中都用一个 if 语句读取鼠标消息再做处理，这样的做法完全错误！正确的做法就是本例中的写法，使用 while 语句一次性读完全部残留在缓冲区的鼠标消息，至于为什么要这么做，请看[这篇文章](https://codebus.cn/zhaoh/handle-mouse-messages-correctly)的解释，此处不再赘述。
-
----
-
-**容易忽略的程序结束判定**
+由于创建了两个窗口，那么在主循环的绘图中，您需要分两个 `if` 语句分别判断窗口是否还存在，因为窗口可能被用户关闭。若窗口还存在，才继续绘图。
 
 在程序主循环的末尾，调用了 `EasyWin32::isAnyWindow()` 判断了是否还存在已经被创建的窗口，如果所有窗口都被关闭，则跳出循环并关闭程序。
 
 这条判断很容易被忽略，如果不对是否还存在窗口进行判断的话，所有窗口都被关闭后，`main` 函数仍会继续运行，但是不在 Windows 任务栏中显示，会残留在后台进程中。
 
-如果在 Win32 消息派发式的代码中，您可以使用阻塞函数 `EasyWin32::init_end()`，这个前面也提到过。
+事实上您可以在创建窗口完毕之后，调用一次 `EasyWin32::AutoExit();`，这个函数将自动检测是否还有任何窗口未被关闭，如果全部窗口都被关闭，则自动结束程序。
 
-如果您不喜欢以上方式，事实上您可以在创建窗口完毕之后，调用一次 `EasyWin32::AutoExit();`，这个函数将自动检测是否还有任何窗口未被关闭，如果全部窗口都被关闭，则自动结束程序。
+**任务系统**
 
-### 混合式
+在 `if` 语句内部，执行绘图任务时，需要调用 `BEGIN_TASK`（或 `BEGIN_TASK_WND`） 宏，任务结束时，使用 `END_TASK()` 宏。
 
-如果前面两种代码结构混合起来也是可以的，见 [Sample3](./samples/Sample3/main.cpp)。
+`BEGIN_TASK` 系列宏用以标识一个任务的起始和结束，包括但不限于绘图任务。
 
-使用混合式的代码可以在顺序执行代码的同时，帮助您处理一些 Windows 消息，例如在 Sample3 中就响应了 WM_CLOSE 消息，也就是在用户点击关闭窗口的时候，弹出了一个提示框。
+每次执行绘图任务（无论是设置绘图属性还是绘图），或者是诸如鼠标消息获取的任务，都应当标识任务的开始和结束。
+
+事实上，`BEGIN_TASK_WND` 和 `END_TASK` 是如下代码的宏定义：
+
+```cpp
+if (EasyWin32::SetWorkingWindow(hWnd))
+{
+	if (EasyWin32::BeginTask())
+	{
+		// TODO: Add your code here.
+
+		EasyWin32::EndTask();
+	}
+}
+```
+
+或者更简洁一点：
+
+```cpp
+if (EasyWin32::SetWorkingWindow(hWnd) && EasyWin32::BeginTask())
+{
+	// TODO: Add your code here.
+
+	EasyWin32::EndTask();
+}
+```
+
+这也意味着写在 `BEGIN_TASK` 和 `END_TASK` 之间的代码是局域代码。
+
+如果在任务中需要暂时终止任务，以开启另一个任务，例如临时创建一个窗口，则不能使用宏，必须将其写成上面的形式。`BEGIN_TASK` 系列宏的定义只是为了能在一些比较简单的情况下写得更加方便。
+
+从上面的代码可以看出，有可能 `EasyWin32::SetWorkingWindow()` 是可能失败的，所以如果任务执行失败对后续的代码会产生影响，那么一定要在后续的代码中根据具体情况判断是否成功执行了任务，或者使用 上面展示的宏展开写法，并加上一个 `else` 语句来处理启动任务失败的情况；否则的话，可能导致程序某些时候突然意外崩溃，这时再排查代码错误是很麻烦的。
+
+调用 `BEGIN_TASK()` 系列宏来表示一个任务的起始和结束，是为了协调多个窗口同时存在的情况，因为多个窗口可能抢占绘图权，所以您需要在执行一个任务时进行标识，使得多个窗口有序绘图。
+
+如果是在顺序代码结构中，很多时候，用户操作导致的关闭窗口，或者是窗口拉伸导致的画布调整，也很有可能直接掐断您的绘图任务，如果您不使用这些宏来标识您正在进行绘图任务的话，就会导致两个任务互相冲突，导致程序崩溃。
+
+**绘图缓冲**
+
+每次任务结束时，会刷新绘图缓冲，但是由于目前程序没有在窗口过程函数的 WM_PAINT 消息中绘图，所以即便刷新了绘图缓冲，也不会立即显示到窗口上。这就需要在每次绘图任务结束时，再调用 `FLUSH_DRAW` 宏以重绘窗口。
+
+EasyWin32 默认就是双缓冲的，所以无需再调用 EasyX 原生的 `BeginBatchDraw` 系列函数。
+
+**鼠标、键盘消息**
+
+EasyWin32 兼容旧版鼠标消息 `MOUSEMSG`，同时支持 `ExMessage`（`ExMessage` 系列函数暂时只能获取 `EM_MOUSE` 消息，即鼠标消息）。
+
+按键消息支持直接使用 `_getch` 一系列函数获取。
+
+注意：使用鼠标消息相关函数时，同样也需要使用 `BEGIN_TASK` 系列宏来标识进行一个任务。
+
+有些人的程序可能在一个主循环中进行，为了响应鼠标操作，每次循环中都用一个 if 语句读取鼠标消息再做处理，这样的做法完全错误！正确的做法就是本例中的写法，使用 while 语句一次性读完全部残留在缓冲区的鼠标消息，至于为什么要这么做，请看 [这篇文章](https://codebus.cn/zhaoh/handle-mouse-messages-correctly) 的解释，此处不再赘述。
+
+## 例子 3：我要 Win32 控件
+
+提示：本例运用了一些 Win32 编程知识。
+
+如果您希望在程序中使用 Win32 控件，则您需要写一个简化版的 Win32 过程函数，就像下面这样：
+
+```cpp
+#include "EasyWin32.h"
+
+// 窗口过程函数
+bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
+{
+	switch (msg)
+	{
+	default: return true; break;	// 使用默认方法处理其余消息
+	}
+	return false;
+}
+
+int main()
+{
+	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
+	EasyWin32::init_end();					// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
+	return 0;
+}
+
+```
+
+窗口过程函数的返回值是布尔类型，标识是否需要使用系统默认方法处理该消息。
+
+需要注意的是：
+
+1. 接受 WM_CREATE 消息时，wParam 和 lParam 是空的，你无法获得 CREATESTRUCT 结构体信息
+
+2. 接受 WM_CLOSE 消息时，返回 true 或 false 表示是否关闭窗口，但如果关闭窗口，您无需编写销毁窗口的代码
+
+对于这段代码，由于 `main` 函数中调用了 `EasyWin32::init_end()` 函数进行阻塞，这个函数会自动判断窗口是否还存在，所以不需要再使用 `EasyWin32::isAnyWindow()` 进行判断。
+
+现在还没有开始创建控件，我们在 `WndProc` 中创建一个按钮吧（可以是其他控件，学习 Win32 编程后可以实现其他控件，这里以按钮举例）：
+
+```cpp
+#include "EasyWin32.h"
+
+// 控件 ID
+#define IDC_BTN 100
+
+// 存储文本
+wchar_t str[128] = { 0 };
+
+// 窗口过程函数
+bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
+{
+	switch (msg)
+	{
+	case WM_CREATE:
+
+		// 创建按钮
+		CreateWindow(L"button", L"Button",
+			WS_CHILD | WS_VISIBLE | ES_LEFT | WS_BORDER,
+			200, 100, 100, 60,
+			hwnd, (HMENU)IDC_BTN, hInstance, NULL);
+
+		break;
+
+	case WM_PAINT:
+
+		BEGIN_TASK_WND(hwnd);	// 将绘图窗口设为自己，并启动一次绘图任务
+		setbkcolor(0xf0f0f0);	// 设置背景色
+		settextcolor(BLUE);		// 设置文本色
+		cleardevice();			// 清屏
+		outtextxy(20, 20, str);	// 输出文字
+		END_TASK();				// 结束此次绘图任务
+
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case IDC_BTN:	// 按下按钮
+
+			BEGIN_TASK_WND(hwnd);
+			wsprintf(str, L"按下了按钮");
+			FLUSH_DRAW();		// 在非 WM_PAINT 消息区域，如需要立即刷新，需要强制重绘
+			END_TASK();
+
+			break;
+		}
+
+	default: return true; break;	// 使用默认方法处理其余消息
+	}
+	return false;
+}
+
+int main()
+{
+	EasyWin32::initgraph_win32(640, 480, 0, L"", WndProc);	// 创建窗口，并指定窗口过程函数
+	EasyWin32::init_end();									// 在 Win32 消息派发的代码结构下，创建完窗口后必须用此函数阻塞
+	return 0;
+}
+```
+
+最后推荐一个 Win32 学习网站：http://winprog.org/tutorial/zh/start_cn.html 。
+
+## 例子 4：窗口关闭？弹窗确认
+
+源代码 [Sample3](./samples/Sample3/main.cpp)：
+
+```cpp
+//	绘图部分源码来自 https://codebus.cn/dudugang/drawing
+
+#include "EasyWin32.h"
+#include <time.h>
+
+int x;								// X 轴坐标
+int y;								// y 轴坐标
+int g_multiples = 0;				// 倍数：作用是对弧度角进行改变
+float g_PI = (float)3.1415;			// 圆周率
+float g_radianAngle;				// 起始角的弧度
+int w = 830;						// 窗口宽
+int h = 580;						// 窗口高
+
+// 窗口过程函数
+bool WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, HINSTANCE hInstance)
+{
+	switch (msg)
+	{
+	case WM_CLOSE:
+
+		// 关闭窗口时提示是否确认关闭
+		if (MessageBox(hwnd, L"确定关闭窗口？", L"提示", MB_OKCANCEL | MB_ICONWARNING) == IDOK)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+
+	default:	return true;	break;
+	}
+}
+
+int main()
+{
+	// 创建绘图窗口，并指定窗口过程函数
+	EasyWin32::initgraph_win32(w, h, false, L"", WndProc);
+
+	// 设置背景色
+	setbkcolor(WHITE);
+
+	while (true)
+	{
+		// 启动一个绘图任务
+		// 由于只创建了一个窗口，所以不需要指定目标绘图窗口
+		// 否则就需要调用 BEGIN_TASK_WND() 宏，指定目标绘图窗口
+		BEGIN_TASK();
+
+		// 进行一些绘制，由于调用的都是 EasyX 绘图函数，不再注释
+		cleardevice();
+		setcolor(RGB(185, 230, 0));
+		setfillcolor(RGB(185, 230, 0));
+		solidrectangle(10, 10, 820, 570);
+		for (size_t j = 0; j < 11; j++)
+		{
+			for (size_t i = 0; i < 16; i++)
+			{
+				x = 15 + 50 * i;
+				y = 15 + 50 * j;
+				g_radianAngle = 0 + g_multiples * g_PI / 4;
+				i < 15 ? g_multiples++ : g_multiples = g_multiples;
+				rectangle(x, y, x + 50, y + 50);
+				setfillcolor(RGB(250, 250, 250));
+				solidcircle(x + 25, y + 25, 20);
+				setfillcolor(RGB(80, 80, 80));
+				solidpie(x + 5, y + 5, x + 50 - 5, y + 50 - 5, g_radianAngle, g_radianAngle + g_PI);
+				setfillcolor(RGB(158, 2, 251));
+				solidcircle(x + 25, y + 25, 15);
+			}
+		}
+
+		// EasyWin32 默认使用双缓冲绘图，此处输出绘图缓冲
+		// 注意：一段绘图任务结束，必须以此宏结尾（即 BEGIN_TASK 和 END_TASK 必须连用）
+		END_TASK();
+
+		// 不在窗口过程函数的 WM_PAINT 消息内绘图时，必须强制重绘
+		// 由于没有自定义窗口过程函数，所以当然也要调用此宏强制重绘
+		FLUSH_DRAW();
+
+		while (true)
+		{
+			// 窗口大小改变时重绘
+			if (EasyWin32::isWindowSizeChanged())
+			{
+				break;
+			}
+
+			// 若窗口被关闭，则结束程序
+			if (!EasyWin32::isAnyWindow())
+			{
+				return 0;
+			}
+
+			Sleep(10);
+		}
+	}
+}
+```
+
+这个例子中，在 main 函数中绘图的同时，响应了 WM_CLOSE （窗口关闭）消息，即在用户点击关闭窗口的时候，弹出了一个提示框。
 
 ## 关于 IMAGE* 的空指针
 
@@ -387,6 +472,10 @@ EasyWin32 将自绘一个 EasyX 的图标作为程序图标，这个图标模仿
 ## 在原有 EasyX 项目上使用 EasyWin32
 
 在大多数情况下，在原有 EasyX 项目上使用 EasyWin32 是很轻松的。
+
+注意：目前 EasyWin32 仅支持 ExMessage 的鼠标消息获取，其他消息无法获取，可能造成兼容性问题，请使用 `_getch` 系列函数代替。
+
+**应用 EasyWin32**
 
 首先将 `#include <graphics.h>` 或 `#include <easyx.h>` 替换为 `#include "EasyWin32.h"`。
 
@@ -428,7 +517,7 @@ while(true)
 }
 ```
 
-这还没完，您必须确保任何的绘图操作都被放到了 `BEGIN_TASK();` 和 `END_TASK();` 的中间，就像下面这样：
+此外，您必须确保任何的绘图操作都被放到了 `BEGIN_TASK();` 和 `END_TASK();` 的中间，就像下面这样：
 
 ```cpp
 while(true)
@@ -450,9 +539,9 @@ while(true)
 
 而原先代码中的 `FlushBatchDraw()` 函数是不需要改的，因为会被宏自动替换为 `FLUSH_DRAW()`，`EndBatchDraw()` 同样也被替换为 `FLUSH_DRAW()`，至于 `BeginBatchDraw()`，他会被替换为空。
 
-所以按理来说您不需要删除任何代码，只需要在每个 `FlushBatchDraw()` 函数前，把整个绘图任务用 `BEGIN_TASK();` 和 `END_TASK();` 包起来即可。
+所以一般情况下您不需要删除任何代码，只需要在每个 `FlushBatchDraw()` 函数前，把整个绘图任务用 `BEGIN_TASK();` 和 `END_TASK();` 包起来即可。
 
-但是还有比较细节的一点，如果说 `Sleep()` 的调用只是为了降低 CPU 占用，则不要将其放在一个绘图任务中，而应该挪到外面来，如下：
+还有一点细节问题。如果说 `Sleep()` 的调用只是为了降低 CPU 占用，则不要将其放在一个绘图任务中，而应该挪到外面来，如下：
 
 ```cpp
 while(true)
@@ -512,7 +601,7 @@ while(true)
 
 `SetWindowLong` 函数不仅仅能够设置窗口的样式，还可以做很多其他事情，但是设置窗口样式是比较常用的功能，所以 EasyWin32 将其做了简单封装。就设置窗口样式而言，您可以调用 `EasyWin32::GetWindowStyle()` 获取当前窗口样式，调用 `EasyWin32::SetWindowStyle()` 设置当前窗口样式（或另一套适用用 ExStyle 的函数，详见头文件）。
 
-但是如果您只是想取消（或启用）最大化按钮，并禁止（或允许）用户拉伸窗口，最简单的方式是使用 EasyWin32 定义的宏 `DisableResizing()`，传入布尔型参数，表示是否禁用当前窗口调整大小。
+EasyWin32 预定义了数个宏用以设置一些常见的窗体属性，详见头文件。
 
 ## 代码中的常见问题整合
 
