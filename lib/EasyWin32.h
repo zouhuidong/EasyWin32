@@ -13,6 +13,8 @@
 
 #pragma once
 
+#define _EASYWIN32_
+
 #include <graphics.h>
 #include <vector>
 #include <string>
@@ -92,13 +94,15 @@ void AutoExit();
 bool isAnyWindow();
 
 // 判断一窗口是否还存在（不含已被关闭的窗口）
-bool isAliveWindow(HWND hWnd);
+// 传入空句柄可以标识当前活动窗口
+bool isAliveWindow(HWND hWnd = NULL);
 
 // 得到当前绘图窗口的句柄
 HWND GetHWnd_win32();
 
-// 阻塞等待当前绘图任务完成
-void WaitForTask();
+// 阻塞等待某窗口绘图任务完成
+// 传入空句柄可以标识当前活动窗口
+void WaitForTask(HWND hWnd = NULL);
 
 // 等待窗口内部消息处理完成
 void WaitForProcessing(EasyWindow* pWnd);
@@ -106,25 +110,27 @@ void WaitForProcessing(EasyWindow* pWnd);
 // 得到当前绘图窗口的详细信息
 EasyWindow GetWorkingWindow();
 
-// 设置当前绘图窗口（同时设置绘图对象为窗口对应的 IMAGE 对象），返回是否设置成功
-// 若有绘图任务进行中，则等待当前绘图任务完成
-// （建议使用 BEGIN_TASK 宏）
+// 等待当前任务完成并设置当前活动窗口，返回是否设置成功
 bool SetWorkingWindow(HWND hWnd);
 
-// 强制重绘当前绘图窗口（正常在 WM_PAINT 消息内绘图不需要使用此函数）
+// 强制重绘当前绘图窗口（在 WM_PAINT 消息内绘图不需要使用此函数）
 void EnforceRedraw();
 
-// 宣告开始一次绘制（建议使用 BEGIN_TASK 宏）
-void BeginTask();
+// 标识启动一次任务，返回是否成功启动任务
+// 调用 EasyX 函数进行绘图或获取消息时，都应该先启动任务再进行调用。
+bool BeginTask();
 
-// 输出绘图缓冲，并表示当前绘图任务告一段落
-//（建议使用 FLUSH_DRAW 或 END_TASK 宏）
+// 输出绘图缓冲，并标识当前任务终止
 void EndTask();
+
+// 判断当前是否有任务在进行
+bool isInTask();
 
 // 获取已创建的窗口的数组（不含已被关闭的窗口）
 std::vector<EasyWindow> GetCreatedWindowList();
 
-// 判断窗口大小是否改变
+// 判断某窗口的大小是否改变
+// 传入空句柄可以标识当前活动窗口
 bool isWindowSizeChanged(HWND hWnd = NULL);
 
 // 判断自定义程序图标的启用状态
@@ -155,7 +161,7 @@ int SetWindowExStyle(long lNewExStyle);
 //// MOUSEMSG 式函数
 
 // 检查是否存在鼠标消息
-bool MouseHit_win32();
+bool MouseHit_win32(EasyWindow* pWnd = NULL);
 
 // 阻塞等待，直到获取到一个新的鼠标消息
 ExMessage GetMouseMsg_win32();
@@ -202,22 +208,24 @@ EASY_WIN32_END
 
 // 启动一段（绘图）任务（绘制到当前绘图窗口）
 #define BEGIN_TASK()\
-	EasyWin32::WaitForTask();\
-	if(EasyWin32::isAliveWindow(EasyWin32::GetHWnd_win32()))\
+	if (EasyWin32::isAliveWindow())\
 	{\
-		EasyWin32::BeginTask()
+		if (EasyWin32::BeginTask())\
+		{(0)	/* 此处强制要求加分号 */
 
 // 启动一段（绘图）任务（指定目标绘图窗口）
 #define BEGIN_TASK_WND(hWnd)\
-	/* 设置工作窗口时将自动等待当前任务结束 */\
+	/* 设置工作窗口时将自动等待任务 */\
 	if (EasyWin32::SetWorkingWindow(hWnd))\
 	{\
-		EasyWin32::BeginTask()
+		if (EasyWin32::BeginTask())\
+		{(0)
 
 // 结束一段（绘图）任务，并输出绘图缓存（须与 BEGIN_TASK 连用）
 #define END_TASK()\
-		EasyWin32::EndTask();\
-	}(0)	/* 此处强制要求加分号 */
+			EasyWin32::EndTask();\
+		}\
+	}(0)
 
 // 要求窗口重绘
 #define FLUSH_DRAW()			EasyWin32::EnforceRedraw()
@@ -225,8 +233,16 @@ EASY_WIN32_END
 ////////////****** 窗口样式宏定义 ******////////////
 
 // 是否禁用当前窗口改变大小
-#define DisableResizing(b)		(b ? EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() & ~WS_SIZEBOX & ~WS_MAXIMIZEBOX) :\
+#define DisableResizing(state)	(state ? EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() & ~WS_SIZEBOX & ~WS_MAXIMIZEBOX) :\
 								EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() | WS_SIZEBOX | WS_MAXIMIZEBOX))
+
+// 是否禁用当前窗口的系统菜单
+#define DisableSystemMenu(state)	(state ? EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() & ~WS_SYSMENU) :\
+									EasyWin32::SetWindowStyle(EasyWin32::GetWindowStyle() | WS_SYSMENU))
+
+// 开启 / 关闭当前窗口的工具栏样式
+#define EnableToolWindowStyle(state)	(state ? EasyWin32::SetWindowExStyle(EasyWin32::GetWindowExStyle() | WS_EX_TOOLWINDOW) :\
+										EasyWin32::SetWindowExStyle(EasyWin32::GetWindowExStyle() & ~WS_EX_TOOLWINDOW))
 
 ////////////****** 键盘消息宏定义 ******////////////
 

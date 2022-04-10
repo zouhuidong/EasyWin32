@@ -24,6 +24,7 @@ wchar_t wstrClassName[] = L"EasyWin32_Class";
 
 // 正操作窗口
 EasyWindow* pFocusWindow = NULL;
+int nFocusWindowIndex = -1;		// 注：该标识仅用于恢复窗口指针
 
 // 窗口表（可能创建了多个窗口）
 std::vector<EasyWindow> vecWindows;
@@ -42,7 +43,7 @@ int nCustomIcon = 0;
 int nCustomIconSm = 0;
 
 // 当前是否处在任务中
-bool isInTask = false;
+bool bInTask = false;
 
 ////////////****** 函数定义 ******////////////
 
@@ -57,17 +58,20 @@ void FlushDrawingToWnd(IMAGE* pImg, HWND hWnd)
 	ReleaseDC(hWnd, hdc);
 }
 
-void WaitForTask()
+void WaitForTask(HWND hWnd)
 {
-	while (isInTask)
+	if (!hWnd || (pFocusWindow && pFocusWindow->hWnd == hWnd))
 	{
-		HpSleep(1);
+		while (bInTask)
+		{
+			HpSleep(1);
+		}
 	}
 }
 
 void WaitForProcessing(EasyWindow* pWnd)
 {
-	while (pWnd->isBusyProcessing)
+	while (pWnd && pWnd->isBusyProcessing)
 	{
 		HpSleep(1);
 	}
@@ -97,12 +101,16 @@ void DelWindow(int index)
 	// 必须先保存下图像指针以供 delete，不能在 vector 移除后使用 pWnd 的图像指针
 	IMAGE* img[2] = { pWnd->pImg ,pWnd->pBufferImg };
 
+	// 释放消息列表内存
+	std::vector<ExMessage>().swap(pWnd->vecMouseMsg);
+
 	// 删除此窗口的记录
 	vecWindows.erase(vecWindows.begin() + index);
 
 	DestroyWindow(pWnd->hWnd);
 	PostQuitMessage(NULL);
 
+	// 为避免外部调用已经析构的指针，释放内存的操作在 vector 移除元素后执行
 	for (int i = 0; i < 2; i++)
 	{
 		delete img[i];
@@ -114,7 +122,7 @@ void closegraph_win32(int index)
 {
 	EasyWindow* pWnd = &vecWindows[index];
 
-	// 如果该窗口是子窗口，由于设置了模态窗口，需要将父窗口恢复正常
+	// 若已设置父窗口为模态窗口，则需要将父窗口恢复正常
 	if (pWnd->hParent != NULL)
 	{
 		EnableWindow(pWnd->hParent, true);
@@ -122,16 +130,24 @@ void closegraph_win32(int index)
 	}
 
 	// 防止和当前绘图任务冲突
+	WaitForTask(pWnd->hWnd);
+	pWnd->isBusyProcessing = true;
+
+	// 为避免产生歧义，活动窗口必须置空
 	if (pWnd == pFocusWindow)
 	{
-		WaitForTask();
-		isInTask = true;
-		DelWindow(index);
-		isInTask = false;
+		pFocusWindow = NULL;
+		nFocusWindowIndex = -1;
 	}
-	else
+
+	DelWindow(index);
+
+	// 关闭的是最后一个被创建的窗口，则需要重置部分内容，防止外界引用出错
+	size_t size = vecWindows.size();
+	if (index == size)
 	{
-		DelWindow(index);
+		pWnd->hWnd = NULL;
+		pWnd->isBusyProcessing = false;
 	}
 }
 
@@ -185,78 +201,95 @@ bool isAnyWindow()
 
 bool isAliveWindow(HWND hWnd)
 {
-	return GetWindowID(hWnd) == -1 ? false : true;
+	if (hWnd)	return GetWindowID(hWnd) == -1 ? false : true;
+	else		return pFocusWindow;
 }
 
 HWND GetHWnd_win32()
 {
-	return pFocusWindow->hWnd;
+	return pFocusWindow ? pFocusWindow->hWnd : NULL;
 }
 
 EasyWindow GetWorkingWindow()
 {
-	return *pFocusWindow;
+	return pFocusWindow ? *pFocusWindow : EasyWindow();
 }
 
 bool SetWorkingWindow(HWND hWnd)
 {
 	int index = GetWindowID(hWnd);
-	if (index == -1)
-	{
-		return false;
-	}
-	pFocusWindow = &vecWindows[index];
+	if (index == -1)	return false;
 	WaitForTask();
+	WaitForProcessing(pFocusWindow);
+	pFocusWindow = &vecWindows[index];
+	nFocusWindowIndex = index;
 	SetWorkingImage(pFocusWindow->pBufferImg);
 	return true;
 }
 
 void EnforceRedraw()
 {
-	InvalidateRect(pFocusWindow->hWnd, NULL, false);
+	if (pFocusWindow)
+	{
+		InvalidateRect(pFocusWindow->hWnd, NULL, false);
+	}
 }
 
 // 复制缓冲区
 void FlushDrawing()
 {
-	// Method 1: fastest
-	memcpy(
+	if (pFocusWindow)
+	{
+		// Method 1: fastest
+		memcpy(
 			GetImageBuffer(pFocusWindow->pImg),
 			GetImageBuffer(pFocusWindow->pBufferImg),
 			sizeof(DWORD) * pFocusWindow->pImg->getwidth() * pFocusWindow->pImg->getheight()
 		);
 
-	// Method 2
-	/*int w = pFocusWindow->pImg->getwidth();
-	int h = pFocusWindow->pImg->getheight();
-	int len = w * h;
-	DWORD* buf[2] = { GetImageBuffer(pFocusWindow->pImg) ,GetImageBuffer(pFocusWindow->pBufferImg) };
-	for (int i = 0; i < len; i++)
-	{
-		buf[0][i] = buf[1][i];
-		buf[0][i] = buf[1][i];
-	}*/
+		// Method 2
+		/*int w = pFocusWindow->pImg->getwidth();
+		int h = pFocusWindow->pImg->getheight();
+		int len = w * h;
+		DWORD* buf[2] = { GetImageBuffer(pFocusWindow->pImg) ,GetImageBuffer(pFocusWindow->pBufferImg) };
+		for (int i = 0; i < len; i++)
+		{
+			buf[0][i] = buf[1][i];
+			buf[0][i] = buf[1][i];
+		}*/
 
-	// Method 3
-	/**pFocusWindow->pImg = *pFocusWindow->pBufferImg;*/
+		// Method 3
+		/**pFocusWindow->pImg = *pFocusWindow->pBufferImg;*/
+	}
 }
 
-void BeginTask()
+bool BeginTask()
 {
-	WaitForProcessing(pFocusWindow);
-	isInTask = true;
+	if (pFocusWindow)
+	{
+		WaitForTask();
+		WaitForProcessing(pFocusWindow);
+		bInTask = true;
+	}
+	return bInTask;
 }
 
 void EndTask()
 {
-	if (isInTask)
+	if (bInTask)
 	{
-		if (isAliveWindow(pFocusWindow->hWnd) && pFocusWindow->pImg && pFocusWindow->pBufferImg)
+		if (pFocusWindow && isAliveWindow(pFocusWindow->hWnd)/* && pFocusWindow->pImg && pFocusWindow->pBufferImg*/)
 		{
 			FlushDrawing();
-			isInTask = false;
 		}
+
+		bInTask = false;
 	}
+}
+
+bool isInTask()
+{
+	return bInTask;
 }
 
 // 根据窗口大小重新调整该窗口画布大小
@@ -305,19 +338,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SIZE:
-		if (pWnd == pFocusWindow)
-		{
-			WaitForTask();		// 防止和当前绘图任务发生冲突
-			pWnd->isBusyProcessing = true;
-			ResizeWindowImage(pWnd);
-			pWnd->isBusyProcessing = false;
-		}
-		else
-		{
-			pWnd->isBusyProcessing = true;
-			ResizeWindowImage(pWnd);
-			pWnd->isBusyProcessing = false;
-		}
+		// 防止和当前绘图任务发生冲突
+		WaitForTask(pWnd->hWnd);
+		pWnd->isBusyProcessing = true;
+		ResizeWindowImage(pWnd);
+		pWnd->isBusyProcessing = false;
 		break;
 
 		// 鼠标消息
@@ -334,7 +359,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_RBUTTONDBLCLK:
 	{
 		// 消息都已经处理完，且堆存消息数量达到阈值
-		if (!MouseHit_win32() && pWnd->vecMouseMsg.size() >= MAX_MOUSEMSG_SIZE)
+		if (!MouseHit_win32(pWnd) && pWnd->vecMouseMsg.size() >= MAX_MOUSEMSG_SIZE)
 		{
 			FlushMouseMsgBuffer_win32();
 		}
@@ -424,6 +449,7 @@ bool isWindowSizeChanged(HWND hWnd)
 		if (id >= 0)	pWnd = &vecWindows[id];
 		else			return false;
 	}
+	if (!pWnd)	return false;
 	bool b = pWnd->isNewSize;
 	pWnd->isNewSize = false;
 	return b;
@@ -440,16 +466,10 @@ void SetCustomIcon(int nIcon, int nIconSm)
 	nCustomIconSm = nIconSm;
 }
 
-bool MouseHit_win32()
+bool MouseHit_win32(EasyWindow* pWnd)
 {
-	if (pFocusWindow->nGetMouseMsgIndex < (int)pFocusWindow->vecMouseMsg.size() - 1)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	if (!pWnd)	pWnd = pFocusWindow;
+	return pWnd && pWnd->nGetMouseMsgIndex < (int)pWnd->vecMouseMsg.size() - 1;
 }
 
 ExMessage GetMouseMsg_win32()
@@ -741,7 +761,13 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 	wnd.isSentCreateMsg = false;
 	wnd.isBusyProcessing = false;
 
+	// 将窗口加入列表后，可能导致原先的活动窗口指针无效，需要重新定位
 	vecWindows.push_back(wnd);
+	if (nFocusWindowIndex != -1)
+	{
+		pFocusWindow = &vecWindows[nFocusWindowIndex];
+	}
+
 	SetWorkingWindow(wnd.hWnd);
 
 	// 获取边框大小，补齐绘图区大小
