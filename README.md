@@ -44,7 +44,7 @@ VisualStudio 2022 | EasyX_20220116 | Windows 10
 
 在程序中包含头文件 `EasyWin32.h` 来使用此库，并且此库使用了命名空间 `EasyWin32`。
 
-一个很简单的[完整示例](./Samples/Start/main.cpp)：
+一个很简单的[完整示例](./samples/Start/main.cpp)：
 ```cpp
 #include "EasyWin32.h"
 #include <conio.h>
