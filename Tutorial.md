@@ -14,9 +14,7 @@ EasyWin32 基于 EasyX 构建，易于上手。
 
 **原有项目使用 EasyWin32**
 
-EasyWin32 的高兼容性支持您轻松地将原先的 EasyX 项目配置上 EasyWin32。
-
-关于这部分内容，请看 [这里](#在原有-easyx-项目上使用-easywin32)
+EasyWin32 的高兼容性支持您轻松地将原先的 EasyX 项目配置上 EasyWin32。 [详细教程](#在原有-easyx-项目上使用-easywin32)
 
 ## 例子 1：写起来和 EasyX 无甚区别
 
