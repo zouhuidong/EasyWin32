@@ -97,3 +97,10 @@ int main()
 }
 
 ```
+
+## 绘图效率
+
+该库是基于 EasyX 的改造，所以会比原生 EasyX 的绘图效率低一些。
+
+关于二者绘图效率的对比程序及其源码，详见 [比较绘图效率](https://github.com/zouhuidong/EasyWin32/tree/main/samples/DrawingEfficiencyComparison)。
+
