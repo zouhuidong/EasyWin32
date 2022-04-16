@@ -26,10 +26,12 @@ EasyWin32 的高兼容性支持您轻松地将原先的 EasyX 项目配置上 Ea
 
 int main()
 {
+	// 创建窗口
 	EasyWin32::initgraph_win32();
 
 	BEGIN_TASK();
 
+	// 绘图
 	settextstyle(32, 0, L"Consolas");
 	settextcolor(LIGHTGREEN);
 	outtextxy(20, 70, L"Hello EasyWin32");
@@ -64,11 +66,11 @@ int main()
 
 很简单吧~其中大部分的函数都是 EasyX 的原生函数。
 
-为了更简洁地展示这个例子，上面的代码中删去了大量的详细注释。对于代码中 EasyWin32 的新增函数，将在稍后解释，或者可以查看含注释的源代码：[源码](./samples/Start/main.cpp)。
+上面这段代码来自：[源码](./samples/Start/main.cpp)。对于上面代码中出现的 EasyWin32 的新增函数，将在稍后解释。
 
 ## 例子 2：启动多个绘图窗口！
 
-[源代码](./samples/Sample2/main.cpp)：
+下面的代码来自：[源码](./samples/Sample2/main.cpp)
 
 ```cpp
 #include "EasyWin32.h"
@@ -218,7 +220,7 @@ if (EasyWin32::SetWorkingWindow(hWnd) && EasyWin32::BeginTask())
 }
 ```
 
-这也意味着写在 `BEGIN_TASK` 和 `END_TASK` 之间的代码是局域代码。
+这也意味着写在 `BEGIN_TASK` 和 `END_TASK` 之间的代码是局部代码。
 
 如果在任务中需要暂时终止任务，以开启另一个任务，例如临时创建一个窗口，则不能使用宏，必须将其写成上面的形式。`BEGIN_TASK` 系列宏的定义只是为了能在一些比较简单的情况下写得更加方便。
 
@@ -352,7 +354,7 @@ int main()
 源代码 [Sample3](./samples/Sample3/main.cpp)：
 
 ```cpp
-//	绘图部分源码来自 https://codebus.cn/dudugang/drawing
+// 备注：绘图部分源码来自 https://codebus.cn/dudugang/drawing
 
 #include "EasyWin32.h"
 #include <time.h>
@@ -597,7 +599,7 @@ while(true)
 
 **其他情况**
 
-在上述情况下，原先的代码中使用了 `FlushBatchDraw();`，这样可以快速找到每个集中的绘图代码块，就不再需要重新找了。如果您原先的代码中没有使用 `FlushBatchDraw();`，那就得把代码中每个集中的绘图代码块找出来，然后再用上述方法标识绘图任务块。
+在上述情况下，原先的代码中使用了 `FlushBatchDraw()`，这样可以快速找到每个集中的绘图代码块，就不再需要重新找了。如果您原先的代码中没有使用 `FlushBatchDraw()`，那就得把代码中每个集中的绘图代码块找出来，然后再用上述方法标识绘图任务块。
 
 温馨提示：出于兼容原生 EasyX 的目的，如果您在 EasyWin32 中使用了 `initgraph()` 函数来创建窗口，那么您就不再需要手动检测窗口的关闭，只要绘图窗口被销毁，程序就会自动退出。
 
