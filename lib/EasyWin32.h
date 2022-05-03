@@ -4,11 +4,11 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.6.1
+//	版　　本：Ver 2.6.2
 //	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.04.10
+//	最后修改：2022.05.03
 //
 
 #pragma once
@@ -39,11 +39,12 @@ struct EasyWindow
 	IMAGE* pBufferImg;					// 图像缓冲区
 										// 窗口消息处理函数
 	bool(*funcWndProc)(HWND, UINT, WPARAM, LPARAM, HINSTANCE);
-	std::vector<ExMessage> vecMouseMsg;	// 鼠标消息队列
-	int nGetMouseMsgIndex;				// 获取鼠标消息的进度索引（现在获取到了数组中的哪一条）
+	std::vector<ExMessage> vecMessage;	// 模拟 EasyX 窗口消息队列
+	int nMessageIndex;					// 消息队列读取进度索引
 	bool isNewSize;						// 窗口大小是否改变
 	bool isSentCreateMsg;				// 是否模拟发送了 WM_CREATE 的消息
 	bool isBusyProcessing;				// 是否正忙于处理内部消息
+	int nSkipPixels;					// 绘制时跳过的像素点数量（降质性速绘）
 };
 
 ////////////****** 窗体相关函数 ******////////////
@@ -113,6 +114,10 @@ EasyWindow GetWorkingWindow();
 // 等待当前任务完成并设置当前活动窗口，返回是否设置成功
 bool SetWorkingWindow(HWND hWnd);
 
+// 设置加速绘制跳过多少像素点
+// 此加速效果是有损的，加速效果与跳过的像素点数正相关。
+void QuickDraw(UINT nSkipPixels);
+
 // 强制重绘当前绘图窗口（在 WM_PAINT 消息内绘图不需要使用此函数）
 void EnforceRedraw();
 
@@ -124,7 +129,8 @@ bool BeginTask();
 void EndTask();
 
 // 判断当前是否有任务在进行
-bool isInTask();
+// 可传入窗口句柄，以判断其是否为当前任务窗口
+bool isInTask(HWND hWnd = NULL);
 
 // 获取已创建的窗口的数组（不含已被关闭的窗口）
 std::vector<EasyWindow> GetCreatedWindowList();
