@@ -3,12 +3,12 @@
 //	EasyWin32.h
 //	基于 EasyX 图形库的 Win32 拓展库
 //
-//	作　　者：huidong <huidong_mail@163.com>
-//	版　　本：Ver 2.6.2
-//	编译环境：VisualStudio 2022 | EasyX_20220116 | Windows 10 
+//	作　　者：huidong <mailhuid@163.com>
+//	版　　本：Ver 2.6.3
+//	编译环境：VisualStudio 2022 | EasyX_20220610 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
-//	最后修改：2022.05.03
+//	最后修改：2022.07.12
 //
 
 #pragma once
@@ -23,6 +23,9 @@
 // 补充绘图窗口初始化参数
 #define EW_NORMAL 0
 
+// 托盘消息
+#define WM_TRAY	(WM_USER + 100)
+
 #define EASY_WIN32_BEGIN	namespace EasyWin32 {
 #define EASY_WIN32_END		};
 
@@ -35,15 +38,28 @@ struct EasyWindow
 {
 	HWND hWnd;							// 窗口句柄
 	HWND hParent;						// 父窗口句柄
+
 	IMAGE* pImg;						// 窗口图像
 	IMAGE* pBufferImg;					// 图像缓冲区
-										// 窗口消息处理函数
-	bool(*funcWndProc)(HWND, UINT, WPARAM, LPARAM, HINSTANCE);
+
+	bool(*funcWndProc)					// 窗口消息处理函数
+		(HWND, UINT, WPARAM, LPARAM, HINSTANCE);
+
 	std::vector<ExMessage> vecMessage;	// 模拟 EasyX 窗口消息队列
 	int nMessageIndex;					// 消息队列读取进度索引
+
+	bool isUseTray;						// 是否使用托盘
+	NOTIFYICONDATA nid;					// 托盘信息
+	bool isUseTrayMenu;					// 是否使用托盘菜单
+	HMENU hTrayMenu;					// 托盘菜单
+	void(*funcTrayMenuProc)(UINT);		// 托盘菜单消息处理函数
+		// 给出此函数是为了方便响应托盘的菜单消息
+		// 如需响应完整的托盘消息，请自定义窗口过程函数并处理 WM_TRAY 消息
+
 	bool isNewSize;						// 窗口大小是否改变
 	bool isSentCreateMsg;				// 是否模拟发送了 WM_CREATE 的消息
 	bool isBusyProcessing;				// 是否正忙于处理内部消息
+
 	int nSkipPixels;					// 绘制时跳过的像素点数量（降质性速绘）
 };
 
@@ -51,7 +67,7 @@ struct EasyWindow
 
 // 创建支持 win32 的绘图窗口（默认支持窗口双击消息）
 // w, h				窗口大小
-// isCmd			是否显示 cmd 窗口（如果是控制台应用程序）
+// flag				窗口样式标识
 // strWndTitle		窗口标题
 // WindowProcess	窗口消息处理函数的指针，为空表示使用默认消息处理函数（详见头文件中“窗口消息处理函数规范”）
 // hParent			父窗口句柄，为空则表示该窗口独立存在（若填写，该窗口将成为模态窗口）
@@ -139,6 +155,20 @@ std::vector<EasyWindow> GetCreatedWindowList();
 // 传入空句柄可以标识当前活动窗口
 bool isWindowSizeChanged(HWND hWnd = NULL);
 
+// 为当前窗口创建一个托盘
+// 传入托盘提示文本
+// 注意：每个窗口仅能稳定占有一个托盘
+void CreateTray(LPCTSTR lpTrayName);
+
+// 删除某窗口的托盘，传入空指针可以标识当前活动窗口
+void DeleteTray(EasyWindow* pWnd = NULL);
+
+// 设置托盘菜单
+void SetTrayMenu(HMENU hMenu);
+
+// 设置托盘菜单消息处理函数
+void SetTrayMenuProcFunc(void(*pFunc)(UINT));
+
 // 判断自定义程序图标的启用状态
 bool GetCustomIconState();
 
@@ -149,6 +179,13 @@ void SetCustomIcon(int nIcon, int nIconSm);
 
 // 获取 EasyWin32 自绘默认窗口图标的 IMAGE
 IMAGE GetDefaultIconImage();
+
+// 在创建窗口前设置窗口样式，仅对此操作后首个新窗口生效
+// 注意：新窗口的所有样式都将被当前样式覆盖
+void PreSetWindowStyle(long lStyle);
+
+// 在创建窗口前设置窗口位置，仅对此操作后首个新窗口生效
+void PreSetWindowPos(int x, int y);
 
 // 获取当前窗口样式
 long GetWindowStyle();

@@ -16,34 +16,35 @@ EASY_WIN32_BEGIN
 
 ////////////****** 全局变量 ******////////////
 
-// 窗口类
-WNDCLASSEX WndClassEx;
 
-// 窗口类名
-wchar_t wstrClassName[] = L"EasyWin32_Class";
+WNDCLASSEX g_WndClassEx;				// 窗口类
+wchar_t g_lpszClassName[]				// 窗口类名
+= L"EasyWin32_Class";
 
-// 正操作窗口
-EasyWindow* pFocusWindow = NULL;
-int nFocusWindowIndex = -1;		// 注：该标识仅用于恢复窗口指针
+EasyWindow* g_pFocusWindow = NULL;		// 正操作窗口
+int g_nFocusWindowIndex = -1;			// 注：该标识仅用于恢复窗口指针
 
-// 窗口表（可能创建了多个窗口）
-std::vector<EasyWindow> vecWindows;
+std::vector<EasyWindow> g_vecWindows;	// 窗口表（管理多窗口）
 
-// 系统分辨率
-int nSysW = 0, nSysH = 0;
+bool g_bInTask = false;					// 当前是否处在任务中
 
-// 系统标题栏宽高
-int nFrameW = 0, nFrameH = 0;
+int g_nSysW = 0, g_nSysH = 0;			// 系统分辨率
 
-// 控制台句柄
-HWND hConsole;
+HWND g_hConsole;						// 控制台句柄
+HINSTANCE g_hInstance;					// 程序实例
 
-// 自定义程序图标，为 0 表示不使用
-int nCustomIcon = 0;
-int nCustomIconSm = 0;
+HICON g_hIconDefault;					// 默认程序图标
+int g_nCustomIcon = 0;					// 自定义程序图标资源 ID，为 0 表示不使用
+int g_nCustomIconSm = 0;
+HICON g_hCustomIcon;					// 自定义程序图标
+HICON g_hCustomIconSm;
 
-// 当前是否处在任务中
-bool bInTask = false;
+bool g_isPreStyle = false;				// 是否预设窗口样式
+bool g_isPrePos = false;				// 是否预设窗口位置
+long g_lPreStyle;						// 创建窗口前的预设样式
+POINT g_pPrePos;						// 创建窗口前的预设窗口位置
+
+UINT g_uWM_TASKBARCREATED;				// 系统任务栏消息代码
 
 ////////////****** 函数定义 ******////////////
 
@@ -60,9 +61,9 @@ void FlushDrawingToWnd(IMAGE* pImg, HWND hWnd)
 
 void WaitForTask(HWND hWnd)
 {
-	if (!hWnd || (pFocusWindow && pFocusWindow->hWnd == hWnd))
+	if (!hWnd || (g_pFocusWindow && g_pFocusWindow->hWnd == hWnd))
 	{
-		while (bInTask)
+		while (g_bInTask)
 		{
 			HpSleep(1);
 		}
@@ -82,9 +83,9 @@ void WaitForProcessing(EasyWindow* pWnd)
 int GetWindowID(HWND hWnd)
 {
 	int index = -1;
-	for (int i = 0; i < (int)vecWindows.size(); i++)
+	for (int i = 0; i < (int)g_vecWindows.size(); i++)
 	{
-		if (hWnd == vecWindows[i].hWnd)
+		if (hWnd == g_vecWindows[i].hWnd)
 		{
 			index = i;
 			break;
@@ -96,7 +97,7 @@ int GetWindowID(HWND hWnd)
 // 删除窗口，释放内存
 void DelWindow(int index)
 {
-	EasyWindow* pWnd = &vecWindows[index];
+	EasyWindow* pWnd = &g_vecWindows[index];
 
 	// 必须先保存下图像指针以供 delete，不能在 vector 移除后使用 pWnd 的图像指针
 	IMAGE* img[2] = { pWnd->pImg ,pWnd->pBufferImg };
@@ -105,7 +106,7 @@ void DelWindow(int index)
 	std::vector<ExMessage>().swap(pWnd->vecMessage);
 
 	// 删除此窗口的记录
-	vecWindows.erase(vecWindows.begin() + index);
+	g_vecWindows.erase(g_vecWindows.begin() + index);
 
 	DestroyWindow(pWnd->hWnd);
 	PostQuitMessage(NULL);
@@ -117,10 +118,10 @@ void DelWindow(int index)
 	}
 }
 
-// 按窗口索引进行关闭窗口
+// 此函数用于内部调用，按窗口索引关闭窗口
 void closegraph_win32(int index)
 {
-	EasyWindow* pWnd = &vecWindows[index];
+	EasyWindow* pWnd = &g_vecWindows[index];
 
 	// 若已设置父窗口为模态窗口，则需要将父窗口恢复正常
 	if (pWnd->hParent != NULL)
@@ -129,21 +130,25 @@ void closegraph_win32(int index)
 		SetForegroundWindow(pWnd->hParent);
 	}
 
+	// 卸载托盘
+	DeleteTray(pWnd);
+
 	// 防止和当前绘图任务冲突
 	WaitForTask(pWnd->hWnd);
 	pWnd->isBusyProcessing = true;
 
 	// 为避免产生歧义，活动窗口必须置空
-	if (pWnd == pFocusWindow)
+	if (pWnd == g_pFocusWindow)
 	{
-		pFocusWindow = NULL;
-		nFocusWindowIndex = -1;
+		g_pFocusWindow = NULL;
+		g_nFocusWindowIndex = -1;
 	}
 
+	// 销毁窗口
 	DelWindow(index);
 
 	// 关闭的是最后一个被创建的窗口，则需要重置部分内容，防止外界引用出错
-	size_t size = vecWindows.size();
+	size_t size = g_vecWindows.size();
 	if (index == size)
 	{
 		pWnd->hWnd = NULL;
@@ -151,16 +156,17 @@ void closegraph_win32(int index)
 	}
 }
 
+// 此函数用于外部调用，只是向目标窗口线程发送关闭窗口消息
 void closegraph_win32(HWND hWnd)
 {
 	// 关闭全部
 	if (hWnd == NULL)
 	{
-		for (int i = 0; i < (int)vecWindows.size(); i++)
+		for (int i = 0; i < (int)g_vecWindows.size(); i++)
 		{
 			// 必须交由原线程销毁窗口，才能使窗口销毁
 			// 特殊标记 wParam 为 1，表示程序命令销毁窗口
-			SendMessage(vecWindows[i].hWnd, WM_DESTROY, 1, 0);
+			SendMessage(g_vecWindows[i].hWnd, WM_DESTROY, 1, 0);
 		}
 	}
 	else
@@ -173,7 +179,7 @@ void init_end()
 {
 	while (true)
 	{
-		if (vecWindows.empty())	// 若所有窗口都被关闭，则跳出
+		if (g_vecWindows.empty())	// 若所有窗口都被关闭，则跳出
 		{
 			return;
 		}
@@ -196,23 +202,23 @@ void AutoExit()
 
 bool isAnyWindow()
 {
-	return !vecWindows.empty();
+	return !g_vecWindows.empty();
 }
 
 bool isAliveWindow(HWND hWnd)
 {
 	if (hWnd)	return GetWindowID(hWnd) == -1 ? false : true;
-	else		return pFocusWindow;
+	else		return g_pFocusWindow;
 }
 
 HWND GetHWnd_win32()
 {
-	return pFocusWindow ? pFocusWindow->hWnd : NULL;
+	return g_pFocusWindow ? g_pFocusWindow->hWnd : NULL;
 }
 
 EasyWindow GetWorkingWindow()
 {
-	return pFocusWindow ? *pFocusWindow : EasyWindow();
+	return g_pFocusWindow ? *g_pFocusWindow : EasyWindow();
 }
 
 bool SetWorkingWindow(HWND hWnd)
@@ -220,28 +226,28 @@ bool SetWorkingWindow(HWND hWnd)
 	int index = GetWindowID(hWnd);
 	if (index == -1)	return false;
 	WaitForTask();
-	WaitForProcessing(pFocusWindow);
-	pFocusWindow = &vecWindows[index];
-	nFocusWindowIndex = index;
-	SetWorkingImage(pFocusWindow->pBufferImg);
+	WaitForProcessing(g_pFocusWindow);
+	g_pFocusWindow = &g_vecWindows[index];
+	g_nFocusWindowIndex = index;
+	SetWorkingImage(g_pFocusWindow->pBufferImg);
 	return true;
 }
 
 void QuickDraw(UINT nSkipPixels)
 {
-	pFocusWindow->nSkipPixels = nSkipPixels;
+	g_pFocusWindow->nSkipPixels = nSkipPixels;
 }
 
 void EnforceRedraw()
 {
-	if (pFocusWindow)
+	if (g_pFocusWindow)
 	{
-		InvalidateRect(pFocusWindow->hWnd, NULL, false);
+		InvalidateRect(g_pFocusWindow->hWnd, NULL, false);
 	}
 }
 
 // 复制缓冲区
-void FlushDrawing(EasyWindow* pWnd = pFocusWindow)
+void FlushDrawing(EasyWindow* pWnd = g_pFocusWindow)
 {
 	int w = pWnd->pImg->getwidth();
 	int h = pWnd->pImg->getheight();
@@ -275,31 +281,31 @@ void FlushDrawing(EasyWindow* pWnd = pFocusWindow)
 
 bool BeginTask()
 {
-	if (!bInTask && pFocusWindow)
+	if (!g_bInTask && g_pFocusWindow)
 	{
 		WaitForTask();
-		WaitForProcessing(pFocusWindow);
-		bInTask = true;
+		WaitForProcessing(g_pFocusWindow);
+		g_bInTask = true;
 	}
-	return bInTask;
+	return g_bInTask;
 }
 
 void EndTask()
 {
-	if (bInTask)
+	if (g_bInTask)
 	{
-		if (pFocusWindow && isAliveWindow(pFocusWindow->hWnd))
+		if (g_pFocusWindow && isAliveWindow(g_pFocusWindow->hWnd))
 		{
 			FlushDrawing();
 		}
 
-		bInTask = false;
+		g_bInTask = false;
 	}
 }
 
 bool isInTask(HWND hWnd)
 {
-	return bInTask && (hWnd ? pFocusWindow && pFocusWindow->hWnd == hWnd : true);
+	return g_bInTask && (hWnd ? g_pFocusWindow && g_pFocusWindow->hWnd == hWnd : true);
 }
 
 // 根据窗口大小重新调整该窗口画布大小
@@ -318,23 +324,75 @@ void ResizeWindowImage(EasyWindow* pWnd)
 	}
 }
 
+void ShowTray(NOTIFYICONDATA* nid)
+{
+	Shell_NotifyIcon(NIM_ADD, nid);
+}
+
+void CreateTray(LPCTSTR lpTrayName)
+{
+	static int id;
+	EasyWindow* pWnd = g_pFocusWindow;
+
+	HICON hIcon = g_hIconDefault;
+	if (g_nCustomIconSm)		hIcon = g_hCustomIconSm;
+	else if (g_nCustomIcon)		hIcon = g_hCustomIcon;
+
+	pWnd->isUseTray = true;
+	pWnd->nid.cbSize = sizeof(pWnd->nid);
+	pWnd->nid.hWnd = pWnd->hWnd;
+	pWnd->nid.uID = id++;
+	pWnd->nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	pWnd->nid.uCallbackMessage = WM_TRAY;
+	pWnd->nid.hIcon = hIcon;
+	lstrcpy(pWnd->nid.szTip, lpTrayName);
+	ShowTray(&pWnd->nid);
+}
+
+void DeleteTray(EasyWindow* pWnd)
+{
+	if (pWnd == NULL)	pWnd = g_pFocusWindow;
+	if (pWnd->isUseTray)
+	{
+		pWnd->isUseTray = false;
+		Shell_NotifyIcon(NIM_DELETE, &pWnd->nid);
+	}
+}
+
+void SetTrayMenu(HMENU hMenu)
+{
+	EasyWindow* pWnd = g_pFocusWindow;
+	pWnd->isUseTrayMenu = true;
+	pWnd->hTrayMenu = hMenu;
+}
+
+void SetTrayMenuProcFunc(void(*pFunc)(UINT))
+{
+	EasyWindow* pWnd = g_pFocusWindow;
+	pWnd->funcTrayMenuProc = pFunc;
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	// 当前传入窗口
-	EasyWindow* pWnd = NULL;
-	bool isNeedDefaultProcess = true;		// 记录是否需要使用默认方法处理消息
+	EasyWindow* pWnd = NULL;			// 当前传入窗口
+	RECT rctWnd;						// 窗口矩形信息
+	POINT ptMouse;						// 鼠标位置
+	bool isNeedDefaultProcess = true;	// 记录是否需要使用默认方法处理消息
 	int indexWnd = GetWindowID(hwnd);	// 该窗口在已记录列表中的索引
-	if (indexWnd == -1)	// 出现未知窗口，则使用默认方法进行处理（此情况按理来说不会出现）
+	if (indexWnd == -1)	// 出现未知窗口，则使用默认方法进行处理（这是非正常情况）
 	{
 		return DefWindowProc(hwnd, msg, wParam, lParam);
 	}
-	pWnd = &vecWindows[indexWnd];
-	RECT rctWnd;
-	GetWindowRect(hwnd, &rctWnd);		// 窗口矩形信息
+
+	// 销毁窗口一定在此函数内进行，所以 pWnd 是不会突然被删除的
+	pWnd = &g_vecWindows[indexWnd];
+
+	GetWindowRect(hwnd, &rctWnd);
+	GetCursorPos(&ptMouse);
 
 	//** 开始处理窗口消息 **//
 
-	// 由于 WM_CREATE 消息被吞噬，需要模拟发送此消息
+	// 由于 WM_CREATE 消息被未知原因吞噬，需要模拟发送此消息
 	if (!pWnd->isSentCreateMsg)
 	{
 		pWnd->isSentCreateMsg = true;
@@ -392,7 +450,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	// 键盘消息甩锅给控制台，实现对按键消息的支持
 	case WM_KEYDOWN: case WM_KEYUP: case WM_CHAR:
-		SendMessage(hConsole, msg, wParam, lParam);
+		SendMessage(g_hConsole, msg, wParam, lParam);
+		break;
+
+		// 托盘消息
+	case WM_TRAY:
+		if (pWnd->isUseTray)
+		{
+			switch (lParam)
+			{
+				// 左键激活窗口
+			case WM_LBUTTONDOWN:
+				SetForegroundWindow(hwnd);
+				break;
+
+				// 右键打开菜单
+			case WM_RBUTTONDOWN:
+				if (pWnd->isUseTrayMenu)
+				{
+					SetForegroundWindow(hwnd);	// 激活一下窗口，防止菜单不消失
+
+					// 显示菜单并跟踪
+					int nMenuId = TrackPopupMenu(pWnd->hTrayMenu, TPM_RETURNCMD, ptMouse.x, ptMouse.y, NULL, hwnd, NULL);
+					if (nMenuId == 0) PostMessage(hwnd, WM_LBUTTONDOWN, NULL, NULL);
+					if (pWnd->funcTrayMenuProc)
+					{
+						pWnd->funcTrayMenuProc(nMenuId);
+					}
+
+				}
+				break;
+
+			default:
+				break;
+			}
+		}
 		break;
 
 	case WM_DESTROY:
@@ -400,6 +492,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		if (wParam)
 		{
 			closegraph_win32(indexWnd);
+		}
+		break;
+
+	default:
+		// 系统任务栏重新创建，此时可能需要重新创建托盘
+		if (msg == g_uWM_TASKBARCREATED)
+		{
+			if (pWnd->isUseTray)
+			{
+				ShowTray(&pWnd->nid);
+			}
 		}
 		break;
 	}
@@ -420,7 +523,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	case WM_MOVE:
 		// 由于移动窗口超出屏幕的话可能导致子窗口显示有问题，所以此时需要彻底重绘
-		if (rctWnd.left <= 0 || rctWnd.top <= 0 || rctWnd.right >= nSysW || rctWnd.bottom >= nSysH)
+		if (rctWnd.left <= 0 || rctWnd.top <= 0 || rctWnd.right >= g_nSysW || rctWnd.bottom >= g_nSysH)
 		{
 			InvalidateRect(hwnd, NULL, false);
 		}
@@ -447,16 +550,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 std::vector<EasyWindow> GetCreatedWindowList()
 {
-	return vecWindows;
+	return g_vecWindows;
 }
 
 bool isWindowSizeChanged(HWND hWnd)
 {
-	EasyWindow* pWnd = pFocusWindow;
+	EasyWindow* pWnd = g_pFocusWindow;
 	if (hWnd)
 	{
 		int id = GetWindowID(hWnd);
-		if (id >= 0)	pWnd = &vecWindows[id];
+		if (id >= 0)	pWnd = &g_vecWindows[id];
 		else			return false;
 	}
 	if (!pWnd)	return false;
@@ -467,28 +570,30 @@ bool isWindowSizeChanged(HWND hWnd)
 
 bool GetCustomIconState()
 {
-	return nCustomIcon;
+	return g_nCustomIcon;
 }
 
 void SetCustomIcon(int nIcon, int nIconSm)
 {
-	nCustomIcon = nIcon;
-	nCustomIconSm = nIconSm;
+	g_nCustomIcon = nIcon;
+	g_nCustomIconSm = nIconSm;
+	g_hCustomIcon = LoadIcon(g_hInstance, MAKEINTRESOURCE(g_nCustomIcon));
+	g_hCustomIconSm = LoadIcon(g_hInstance, MAKEINTRESOURCE(g_nCustomIconSm));
 }
 
 bool MouseHit_win32(EasyWindow* pWnd)
 {
-	if (!pWnd)	pWnd = pFocusWindow;
+	if (!pWnd)	pWnd = g_pFocusWindow;
 	return pWnd && pWnd->nMessageIndex < (int)pWnd->vecMessage.size() - 1;
 }
 
 ExMessage GetMouseMsg_win32()
 {
 	while (!MouseHit_win32()) { HpSleep(1); };
-	ExMessage msg = pFocusWindow->vecMessage[pFocusWindow->nMessageIndex];
-	if (pFocusWindow->nMessageIndex < (int)pFocusWindow->vecMessage.size())
+	ExMessage msg = g_pFocusWindow->vecMessage[g_pFocusWindow->nMessageIndex];
+	if (g_pFocusWindow->nMessageIndex < (int)g_pFocusWindow->vecMessage.size())
 	{
-		pFocusWindow->nMessageIndex++;
+		g_pFocusWindow->nMessageIndex++;
 	}
 	return msg;
 }
@@ -503,7 +608,7 @@ bool PeekMouseMsg_win32(ExMessage* pMsg, bool bRemoveMsg)
 		}
 		else
 		{
-			*pMsg = pFocusWindow->vecMessage[pFocusWindow->nMessageIndex];
+			*pMsg = g_pFocusWindow->vecMessage[g_pFocusWindow->nMessageIndex];
 		}
 
 		return true;
@@ -516,8 +621,8 @@ bool PeekMouseMsg_win32(ExMessage* pMsg, bool bRemoveMsg)
 
 void FlushMouseMsgBuffer_win32()
 {
-	pFocusWindow->vecMessage.clear();
-	pFocusWindow->nMessageIndex = 0;
+	g_pFocusWindow->vecMessage.clear();
+	g_pFocusWindow->nMessageIndex = 0;
 }
 
 ExMessage getmessage_win32(BYTE filter)
@@ -616,24 +721,36 @@ IMAGE GetDefaultIconImage()
 	return img;
 }
 
+void PreSetWindowStyle(long lStyle)
+{
+	g_isPreStyle = true;
+	g_lPreStyle = lStyle;
+}
+
+void PreSetWindowPos(int x, int y)
+{
+	g_isPrePos = true;
+	g_pPrePos = { x,y };
+}
+
 long GetWindowStyle()
 {
-	return GetWindowLong(pFocusWindow->hWnd, GWL_STYLE);
+	return GetWindowLong(g_pFocusWindow->hWnd, GWL_STYLE);
 }
 
 long GetWindowExStyle()
 {
-	return GetWindowLong(pFocusWindow->hWnd, GWL_EXSTYLE);
+	return GetWindowLong(g_pFocusWindow->hWnd, GWL_EXSTYLE);
 }
 
 int SetWindowStyle(long lNewStyle)
 {
-	return SetWindowLong(pFocusWindow->hWnd, GWL_STYLE, lNewStyle);
+	return SetWindowLong(g_pFocusWindow->hWnd, GWL_STYLE, lNewStyle);
 }
 
 int SetWindowExStyle(long lNewExStyle)
 {
-	return SetWindowLong(pFocusWindow->hWnd, GWL_EXSTYLE, lNewExStyle);
+	return SetWindowLong(g_pFocusWindow->hWnd, GWL_EXSTYLE, lNewExStyle);
 }
 
 // 获取默认窗口图标
@@ -648,35 +765,26 @@ HICON GetDefaultAppIcon()
 
 void RegisterWndClass()
 {
-	HICON hIconDefault = GetDefaultAppIcon();
-	HICON hIcon = hIconDefault;
-	HICON hIconSm = hIconDefault;
-	HINSTANCE hInstance = GetModuleHandle(0);
+	HICON hIcon = g_hIconDefault;
+	HICON hIconSm = g_hIconDefault;
+	if (g_nCustomIcon)		hIcon = g_hCustomIcon;
+	if (g_nCustomIconSm)	hIconSm = g_hCustomIconSm;
 
-	if (nCustomIcon)
-	{
-		hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(nCustomIcon));
-	}
-	if (nCustomIconSm)
-	{
-		hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(nCustomIconSm));
-	}
-
-	WndClassEx.cbSize = sizeof(WNDCLASSEX);
-	WndClassEx.style = CS_VREDRAW | CS_HREDRAW;
-	WndClassEx.lpfnWndProc = WndProc;
-	WndClassEx.cbClsExtra = 0;
-	WndClassEx.cbWndExtra = 0;
-	WndClassEx.hInstance = hInstance;
-	WndClassEx.hIcon = hIcon;
-	WndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
-	WndClassEx.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-	WndClassEx.lpszMenuName = NULL;
-	WndClassEx.lpszClassName = wstrClassName;
-	WndClassEx.hIconSm = hIconSm;
+	g_WndClassEx.cbSize = sizeof(WNDCLASSEX);
+	g_WndClassEx.style = CS_VREDRAW | CS_HREDRAW;
+	g_WndClassEx.lpfnWndProc = WndProc;
+	g_WndClassEx.cbClsExtra = 0;
+	g_WndClassEx.cbWndExtra = 0;
+	g_WndClassEx.hInstance = g_hInstance;
+	g_WndClassEx.hIcon = hIcon;
+	g_WndClassEx.hCursor = LoadCursor(NULL, IDC_ARROW);
+	g_WndClassEx.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+	g_WndClassEx.lpszMenuName = NULL;
+	g_WndClassEx.lpszClassName = g_lpszClassName;
+	g_WndClassEx.hIconSm = hIconSm;
 
 	// 注册窗口类
-	if (!RegisterClassEx(&WndClassEx))
+	if (!RegisterClassEx(&g_WndClassEx))
 	{
 		std::wstring str = std::to_wstring(GetLastError());
 		MessageBox(NULL, (L"Error registing window class: " + str).c_str(), L"[Error]", MB_OK | MB_ICONERROR);
@@ -687,9 +795,10 @@ void RegisterWndClass()
 // 真正创建窗口的函数（阻塞）
 void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess)(HWND, UINT, WPARAM, LPARAM, HINSTANCE), HWND hParent, int* nDoneFlag)
 {
-	static int nWndCount;		// 窗口计数
+	static int nWndCount;		// 已创建窗口计数（用于生成窗口标题）
 	std::wstring wstrTitle;		// 窗口标题
 	EasyWindow wnd;				// 窗口信息
+	int nFrameW, nFrameH;		// 窗口标题栏宽高（各个窗口可能不同）
 
 	// 未设置标题
 	if (lstrlen(strWndTitle) == 0)
@@ -705,39 +814,48 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 		wstrTitle = strWndTitle;
 	}
 
-	// 第一次创建窗口
+	// 第一次创建窗口 --- 初始化各项数据
 	if (nWndCount == 0)
 	{
 		// 获取分辨率
-		nSysW = GetSystemMetrics(SM_CXSCREEN);
-		nSysH = GetSystemMetrics(SM_CYSCREEN);
+		g_nSysW = GetSystemMetrics(SM_CXSCREEN);
+		g_nSysH = GetSystemMetrics(SM_CYSCREEN);
+
+		// 默认程序图标
+		g_hIconDefault = GetDefaultAppIcon();
 
 		// 注册窗口类
 		RegisterWndClass();
-		hConsole = GetConsoleWindow();
+		g_hConsole = GetConsoleWindow();
+		g_hInstance = GetModuleHandle(0);
 
-		if (hConsole)
+		// 隐藏控制台
+		if (g_hConsole)
 		{
-			ShowWindow(hConsole, SW_HIDE);
+			ShowWindow(g_hConsole, SW_HIDE);
 		}
+
+		// 获取系统任务栏自定义的消息代码
+		g_uWM_TASKBARCREATED = RegisterWindowMessage(TEXT("TaskbarCreated"));
 	}
 
 	// 控制台
-	if (hConsole && flag & EW_SHOWCONSOLE)
+	if (g_hConsole && flag & EW_SHOWCONSOLE)
 	{
-		ShowWindow(hConsole, flag & SW_NORMAL);
+		ShowWindow(g_hConsole, flag & SW_NORMAL);
 	}
 
 	int user_style = WS_OVERLAPPEDWINDOW;
-	if (flag & EW_NOMINIMIZE)
+	if (flag & EW_NOMINIMIZE)	// 剔除最小化按钮
 	{
 		user_style &= ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX;
 	}
+	// 此方法不行，在下面处理此属性
 	/*if (flag & EW_NOCLOSE)
 	{
 		user_style &= ~WS_SYSMENU;
 	}*/
-	if (flag & EW_DBLCLKS)
+	if (flag & EW_DBLCLKS)		// 支持双击
 	{
 		user_style |= CS_DBLCLKS;
 	}
@@ -747,21 +865,20 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 	{
 		wnd.hWnd = CreateWindowEx(
 			WS_EX_WINDOWEDGE,
-			wstrClassName,
+			g_lpszClassName,
 			wstrTitle.c_str(),
-			user_style,
+			g_isPreStyle ? g_lPreStyle : user_style,
 			CW_USEDEFAULT, CW_USEDEFAULT,
-			w, h,
+			w, h,	// 宽高暂时这样设置，稍后获取边框大小后再调整
 			hParent,
 			NULL,
-			GetModuleHandle(0),
+			g_hInstance,
 			NULL
 		);
 
+		// 创建成功，跳出
 		if (wnd.hWnd)
-		{
 			break;
-		}
 
 		// 三次创建窗口失败，不再尝试
 		else if (i == 2)
@@ -773,51 +890,78 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 		}
 	}
 
-	// 设置窗口属性
-	wnd.hParent = hParent;
-	wnd.pImg = new IMAGE(w, h);
-	wnd.pBufferImg = new IMAGE(w, h);
-	wnd.funcWndProc = WindowProcess;
-	wnd.vecMessage.reserve(MAX_MOUSEMSG_SIZE);
-	wnd.nMessageIndex = 0;
-	wnd.isNewSize = false;
-	wnd.isSentCreateMsg = false;
-	wnd.isBusyProcessing = false;
-	wnd.nSkipPixels = 0;
-
-	// 将窗口加入列表后，可能导致原先的活动窗口指针无效，需要重新定位
-	vecWindows.push_back(wnd);
-	if (nFocusWindowIndex != -1)
-	{
-		pFocusWindow = &vecWindows[nFocusWindowIndex];
-	}
-
-	SetWorkingWindow(wnd.hWnd);
-
-	// 获取边框大小，补齐绘图区大小
-	if (nWndCount == 0)
-	{
-		RECT rcClient, rcWnd;
-		GetClientRect(wnd.hWnd, &rcClient);
-		GetWindowRect(wnd.hWnd, &rcWnd);
-		nFrameW = (rcWnd.right - rcWnd.left) - rcClient.right;
-		nFrameH = (rcWnd.bottom - rcWnd.top) - rcClient.bottom;
-	}
-
-	nWndCount++;
-
-	SetWindowPos(wnd.hWnd, HWND_TOP, 0, 0, w + nFrameW, h + nFrameH, SWP_NOMOVE);
+	// 剔除关闭按钮
 	if (flag & EW_NOCLOSE)
 	{
 		HMENU hmenu = GetSystemMenu(wnd.hWnd, false);
 		RemoveMenu(hmenu, SC_CLOSE, MF_BYCOMMAND);
 	}
 
+	// 初始化窗口属性
+	wnd.hParent = hParent;
+	wnd.pImg = new IMAGE(w, h);
+	wnd.pBufferImg = new IMAGE(w, h);
+	wnd.funcWndProc = WindowProcess;
+	wnd.vecMessage.reserve(MAX_MOUSEMSG_SIZE);
+	wnd.nMessageIndex = 0;
+	wnd.isUseTray = false;
+	wnd.nid = { 0 };
+	wnd.isUseTrayMenu = false;
+	wnd.hTrayMenu = NULL;
+	wnd.funcTrayMenuProc = NULL;
+	wnd.isNewSize = false;
+	wnd.isSentCreateMsg = false;
+	wnd.isBusyProcessing = false;
+	wnd.nSkipPixels = 0;
+
+	// 将窗口加入列表后，可能导致原先的活动窗口指针无效，需要重新定位
+	g_vecWindows.push_back(wnd);
+	if (g_nFocusWindowIndex != -1)
+	{
+		g_pFocusWindow = &g_vecWindows[g_nFocusWindowIndex];
+	}
+
+	// 抢夺焦点
+	SetWorkingWindow(wnd.hWnd);
+
+	// 窗口创建完毕
+	nWndCount++;
+	g_isPreStyle = false;
+	g_isPrePos = false;
+
+	// 注意：
+	//	必须在显示窗口前标记已经完成创建窗口。
+	//	因为可以在自定义过程函数中创建子窗口，若是不在显示窗口前标记窗口创建完成，
+	//	就会导致父窗口过程函数阻塞，接下来显示窗口就会阻塞，进而导致整个窗口假死。
+	*nDoneFlag = 1;		
+
+	//** 显示窗口等后续处理 **//
+
+	// 获取边框大小，补齐绘图区大小
+	RECT rcClient, rcWnd;
+	GetClientRect(wnd.hWnd, &rcClient);
+	GetWindowRect(wnd.hWnd, &rcWnd);
+	nFrameW = (rcWnd.right - rcWnd.left) - rcClient.right;
+	nFrameH = (rcWnd.bottom - rcWnd.top) - rcClient.bottom;
+
+	int px = 0, py = 0;
+	if (g_isPrePos)
+	{
+		px = g_pPrePos.x;
+		py = g_pPrePos.y;
+	}
+	SetWindowPos(
+		wnd.hWnd,
+		HWND_TOP,
+		px, py,
+		w + nFrameW, h + nFrameH,
+		g_isPrePos ? 0 : SWP_NOMOVE
+	);
+
 	ShowWindow(wnd.hWnd, SW_SHOWNORMAL);
 	UpdateWindow(wnd.hWnd);
 
-	*nDoneFlag = 1;
-
+	// 消息派发，阻塞
 	MSG Msg;
 	while (GetMessage(&Msg, NULL, NULL, NULL) > 0)
 	{
@@ -851,7 +995,7 @@ HWND initgraph_win32(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowPr
 	}
 	else
 	{
-		return pFocusWindow->hWnd;
+		return g_pFocusWindow->hWnd;
 	}
 }
 
