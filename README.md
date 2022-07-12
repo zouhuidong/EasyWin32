@@ -6,31 +6,29 @@
 ![Forks](https://img.shields.io/github/forks/zouhuidong/EasyWin32)
 ![Downloads](https://img.shields.io/github/downloads/zouhuidong/EasyWin32/total)
 
-EasyX 库的 Win32 拓展版：解锁多窗口（同时创建多个绘图窗口）、可以使用 Win32 控件、可以拉伸窗口大小
+EasyWin32 是基于 EasyX 的 Win32 拓展库，支持多窗口绘图、调整窗口大小、调用 Win32 控件、快速创建托盘等功能 
 
-对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就可以在原有项目上应用 EasyWin32。
+## 快速入门
+
+EasyWin32 对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就可以在原有项目上应用 EasyWin32。
 
 > [查看教程](./Tutorial.md)
 
 > [更新日志](./Changelog.md)
 
-## 介绍
+### 拓展功能
 
-这个库实现了 EasyX 创建多窗口，以及对 Win32 控件的支持。
+1. 支持多窗口绘图
+2. 支持自定义窗口过程函数
+3. 支持 Win32 控件
+4. 支持窗口大小调整
+5. 支持快速创建托盘
 
-这个拓展库的原理是：创建 Win32 窗口，然后将 EasyX 的绘制内容刷新到 Win32 窗口上，以实现在 Win32 应用上进行 EasyX 绘图。
+### 实现原理
 
-*受限于每次只能对同一个 IMAGE 对象进行绘制的机制，多窗口绘图的效率会受到微弱的影响。*
+本库创建窗口时完全脱离 EasyX，以获得对窗口的完全控制权。每个窗口对应一块 EasyX 的 IMAGE 画布，绘制内容存储在画布上，显示时再映射到窗口上。
 
-程序示例：
-
-![示例图片](./screenshot/5.png)
-![示例图片](./screenshot/6.png)
-![示例图片](./screenshot/7.png)
-
-图片对应的示例程序可以在 samples 文件夹中找到，包括源码和可执行程序，源码内附详细注释。
-
-## 编译环境
+### 编译环境
 
 VisualStudio 2022 | EasyX_20220116 | Windows 10
 
@@ -38,13 +36,13 @@ VisualStudio 2022 | EasyX_20220116 | Windows 10
 
 **注意：暂不支持 MingW 编译器，请使用 VisualStudio 编译项目。**
 
-## 配置此库
+### 配置此库
 
-配置此库很简单，只需要将 lib 文件夹中的所有文件都复制到您的项目目录下，然后添加到您的项目中即可。
+配置此库只需要将 lib 文件夹中的所有文件都复制到您的项目目录下，然后添加到您的项目中即可。
 
-在程序中包含头文件 `EasyWin32.h` 来使用此库，并且此库使用了命名空间 `EasyWin32`。
+调用此库需包含头文件 `EasyWin32.h`，库函数都属于命名空间 `EasyWin32`。
 
-一个很简单的[完整示例](./samples/Start/main.cpp)：
+一个很简单的 [完整示例](./samples/Start/main.cpp)：
 ```cpp
 #include "EasyWin32.h"
 #include <conio.h>
@@ -98,9 +96,20 @@ int main()
 
 ```
 
-## 绘图效率
+### 示例程序
 
-该库是基于 EasyX 的改造，所以会比原生 EasyX 的绘图效率低一些。
+图片对应的示例程序可以在 ./samples 文件夹中找到，包括源码和可执行程序。
+
+![示例图片](./screenshot/5.png)
+
+![示例图片](./screenshot/6.png)
+
+![示例图片](./screenshot/7.png)
+
+### 绘图效率
+
+EasyWin32 的绘图效率略低于原生 EasyX，但根据测试结果来看，相差并不多。
+
+拖慢 EasyWin32 绘图效率的主要因素是画布和窗口的映射，此外就是多窗口的绘图协调。
 
 关于二者绘图效率的对比程序及其源码，详见 [比较绘图效率](https://github.com/zouhuidong/EasyWin32/tree/main/samples/DrawingEfficiencyComparison)。
-
