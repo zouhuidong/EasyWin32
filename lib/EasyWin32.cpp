@@ -32,7 +32,8 @@ bool g_bInTask = false;					// 当前是否处在任务中
 int g_nSysW = 0, g_nSysH = 0;			// 系统分辨率
 
 HWND g_hConsole;						// 控制台句柄
-HINSTANCE g_hInstance;					// 程序实例
+HINSTANCE g_hInstance					// 程序实例
+= GetModuleHandle(0);
 
 HICON g_hIconDefault;					// 默认程序图标
 int g_nCustomIcon = 0;					// 自定义程序图标资源 ID，为 0 表示不使用
@@ -828,7 +829,6 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 		// 注册窗口类
 		RegisterWndClass();
 		g_hConsole = GetConsoleWindow();
-		g_hInstance = GetModuleHandle(0);
 
 		// 隐藏控制台
 		if (g_hConsole)
@@ -932,7 +932,7 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 	//	必须在显示窗口前标记已经完成创建窗口。
 	//	因为可以在自定义过程函数中创建子窗口，若是不在显示窗口前标记窗口创建完成，
 	//	就会导致父窗口过程函数阻塞，接下来显示窗口就会阻塞，进而导致整个窗口假死。
-	*nDoneFlag = 1;		
+	*nDoneFlag = 1;
 
 	//** 显示窗口等后续处理 **//
 
