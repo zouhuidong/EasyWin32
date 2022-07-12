@@ -24,7 +24,7 @@ EasyWin32 对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就
 
 ## 编译环境
 
-VisualStudio 2022 | EasyX_20220116 | Windows 10
+VisualStudio 2022 | EasyX_20220610 | Windows 10
 
 *您必须已经配置 EasyX 图形库，如未配置，请访问图形库官网 https://easyx.cn*
 
