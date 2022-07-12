@@ -612,9 +612,9 @@ int main()
 
 ## 关于 IMAGE* 的空指针
 
-由于 EasyWin32 绕开了 EasyX 原生的 `initgraph` 函数，所以在调用需要 `IMAGE` 对象指针的函数时，不可以传入 `NULL`，而需要传入您的窗口的 `IMAGE` 对象指针。
+由于 EasyWin32 绕开了 EasyX 原生的 `initgraph` 函数，所以在调用需要 `IMAGE` 对象指针的函数时，不可以传入 `NULL`，而需要传入您的窗口对应的 `IMAGE` 对象指针（使用 `GetWorkingImage()` 获取）。
 
-诸如以下函数都默认会传入 `IMAGE* pImg = NULL`：`GetImageBuffer`，`SetWorkingImage`，`GetImageHDC` 等等，都需要传入具体的指针。
+诸如以下函数都默认会传入 `IMAGE* pImg = NULL`：`GetImageBuffer`，`SetWorkingImage`，`GetImageHDC` 等等，调用这些函数时都需要传入具体的指针。
 
 ## 程序图标
 
@@ -760,7 +760,7 @@ while(true)
 
 如果您想改变窗口样式，例如取消最大化按钮，禁止用户拉伸窗口，您可以使用 Win32 API `SetWindowLong` 函数，这需要一些 Win32 知识。
 
-`SetWindowLong` 函数不仅仅能够设置窗口的样式，还可以做很多其他事情，但是设置窗口样式是比较常用的功能，所以 EasyWin32 将其做了简单封装。就设置窗口样式而言，您可以调用 `EasyWin32::GetWindowStyle()` 获取当前窗口样式，调用 `EasyWin32::SetWindowStyle()` 设置当前窗口样式（或另一套适用用 ExStyle 的函数，详见头文件）。
+`SetWindowLong` 函数不仅仅能够设置窗口的样式，还可以做很多其他事情，但是设置窗口样式是比较常用的功能，所以 EasyWin32 将其做了简单封装。就设置窗口样式而言，您可以调用 `EasyWin32::GetWindowStyle()` 获取当前窗口样式，调用 `EasyWin32::SetWindowStyle()` 设置当前窗口样式（或另一套适用于 ExStyle 的函数，详见头文件）。
 
 EasyWin32 预定义了数个宏用以设置一些常见的窗体属性，详见头文件。
 
@@ -768,8 +768,8 @@ EasyWin32 预定义了数个宏用以设置一些常见的窗体属性，详见�
 
 1. 创建窗口后没有判断窗口是否被关闭
 2. 调用 EasyX 库函数前后没有使用 `BEGIN_TASK()` 系列宏或函数
-3. 在任务（TASK）执行失败会对后续代码造成影响的地方，没有对任务执行失败做出判断
-4. 循环结构中，鼠标操作使用 if 语句读取。应改为使用 while
-5. 向 EasyX 库函数传入空的 IMAGE 指针
-6. 在 `BEGIN_TASK` 和 `END_TASK` 之间写入了不必要的 `Sleep` 等用以延时的代码，或在两个任务之间几乎无间隙，抑或是在一个任务中插入了耗时极长的代码或死循环
+3. `EasyWin32::BeginTask()` 可能启动任务失败。对于必须正确执行的任务，没有处理任务启动失败的情况（此情况也不能使用 `BEGIN_TASK()` 宏，它无法返回任务是否执行成功）
+4. 循环结构的主程序中，每次读取鼠标操作使用了 `if` 语句读取。应改为使用 `while`，一次读完所有消息
+5. 向 EasyX 库函数传入空的 IMAGE 指针来代指主画布，应使用 `GetWorkingImage()` 获取主画布地址
+6. 任务耗时过长。可能是因为任务中存在不必要的延时代码（如 `Sleep`）、耗时的计算、死循环等等，或在两个任务之间几乎无间隙
 
