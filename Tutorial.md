@@ -619,11 +619,30 @@ int main()
 
 诸如以下函数都默认会传入 `IMAGE* pImg = NULL`：`GetImageBuffer`，`SetWorkingImage`，`GetImageHDC` 等等，调用这些函数时都需要传入具体的指针。
 
-## 程序图标
+## 添加程序图标
 
-EasyWin32 将自绘一个 EasyX 的图标作为程序图标，这个图标模仿的是 EasyX 官网的页面图标。
+EasyWin32 将自绘一个 EasyX 的图标作为程序图标，这个图标模仿的是 EasyX 官网的网页 icon。
 
 如果想要使用自己的图标，必须先在程序第一次创建窗口前就调用 `EasyWin32::SetCustomIcon` 函数，并传入自己的图标资源 ID。
+
+### 在 Visual Studio 中添加图像资源
+
+**方法一：** 在资源视图中右键项目 -> 【添加】 -> 【资源】，选择图标资源。
+
+**方法二：** 在项目中创建 resource.h 和 【项目名】.rc。
+
+在 resource.h 中：
+```cpp
+#define IDI_ICON1	101
+```
+
+在 【项目名】.rc 中：
+```cpp
+#include "resource.h"
+IDI_ICON1	ICON	"icon.ico" /* 修改为你的图标文件路径 */
+```
+
+即可。
 
 ## 在原有 EasyX 项目上使用 EasyWin32
 
