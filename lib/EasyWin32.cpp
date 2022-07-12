@@ -1,8 +1,9 @@
 /////////////////////////////////////
 //
 //	EasyWin32.cpp
-//	
-//	详细信息见 EasyWin32.h
+//
+//	Ver 2.6.3
+//
 //
 
 #include "EasyWin32.h"
@@ -926,8 +927,6 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 
 	// 窗口创建完毕
 	nWndCount++;
-	g_isPreStyle = false;
-	g_isPrePos = false;
 
 	// 注意：
 	//	必须在显示窗口前标记已经完成创建窗口。
@@ -957,6 +956,9 @@ void InitWindow(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowProcess
 		w + nFrameW, h + nFrameH,
 		g_isPrePos ? 0 : SWP_NOMOVE
 	);
+
+	g_isPreStyle = false;
+	g_isPrePos = false;
 
 	ShowWindow(wnd.hWnd, SW_SHOWNORMAL);
 	UpdateWindow(wnd.hWnd);
