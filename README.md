@@ -6,9 +6,7 @@
 ![Forks](https://img.shields.io/github/forks/zouhuidong/EasyWin32)
 ![Downloads](https://img.shields.io/github/downloads/zouhuidong/EasyWin32/total)
 
-EasyWin32 是基于 EasyX 的 Win32 拓展库，支持多窗口绘图、调整窗口大小、调用 Win32 控件、快速创建托盘等功能 
-
-## 快速入门
+EasyWin32 是基于 EasyX 的 Win32 拓展库，支持多窗口绘图、调整窗口大小、调用 Win32 控件、快速创建托盘等功能。
 
 EasyWin32 对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就可以在原有项目上应用 EasyWin32。
 
@@ -16,7 +14,7 @@ EasyWin32 对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就
 
 > [更新日志](./Changelog.md)
 
-### 拓展功能
+## 拓展功能
 
 1. 支持多窗口绘图
 2. 支持自定义窗口过程函数
@@ -24,11 +22,7 @@ EasyWin32 对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就
 4. 支持窗口大小调整
 5. 支持快速创建托盘
 
-### 实现原理
-
-本库创建窗口时完全脱离 EasyX，以获得对窗口的完全控制权。每个窗口对应一块 EasyX 的 IMAGE 画布，绘制内容存储在画布上，显示时再映射到窗口上。
-
-### 编译环境
+## 编译环境
 
 VisualStudio 2022 | EasyX_20220116 | Windows 10
 
@@ -36,7 +30,11 @@ VisualStudio 2022 | EasyX_20220116 | Windows 10
 
 **注意：暂不支持 MingW 编译器，请使用 VisualStudio 编译项目。**
 
-### 配置此库
+## 实现原理
+
+本库创建窗口时完全脱离 EasyX，以获得对窗口的完全控制权。每个窗口对应一块 EasyX 的 IMAGE 画布，绘制内容存储在画布上，显示时再映射到窗口上。
+
+## 配置此库
 
 配置此库只需要将 lib 文件夹中的所有文件都复制到您的项目目录下，然后添加到您的项目中即可。
 
@@ -96,7 +94,7 @@ int main()
 
 ```
 
-### 示例程序
+## 示例程序
 
 图片对应的示例程序可以在 ./samples 文件夹中找到，包括源码和可执行程序。
 
@@ -106,7 +104,7 @@ int main()
 
 ![示例图片](./screenshot/7.png)
 
-### 绘图效率
+## 绘图效率
 
 EasyWin32 的绘图效率略低于原生 EasyX，但根据测试结果来看，相差并不多。
 
