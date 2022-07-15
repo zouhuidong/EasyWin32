@@ -1,5 +1,21 @@
 # 更新日志
 
+**Ver3.0.0** (2022.07.15)
+
+1. 内部结构深度优化，修复新建窗口时可能崩溃的 bug
+2. 重写消息处理模块，支持所有 EasyX 消息（`EM_MOUSE`, `EM_KEY`, `EM_CHAR`, `EM_WINDOW`），完全兼容 `MOUSEMSG` 系列函数
+3. 新增 `EM_ALL` 宏，代指所有消息
+4. 修改 `EasyWindow` 结构，增加窗口存活标志（`isAlive`），删除 `isSentCreateMsg`
+5. `DeleteTray` 参数从 `EasyWindow*` 改为 `HWND`
+6. 删除 `WaitForProcessing` 函数
+7. 删除 `GetCreatedWindowList` 函数
+8. 新增 `outtextxy_format` 函数
+9. 新增 `DARKYELLOW`，`PINKWHITE` 颜色宏
+10. `initgraph` 宏支持可变参数
+11. `WM_DESTROY` 消息的处理移动到自定义窗口过程函数后
+
+---
+
 **Ver2.6.3** (2022.07.12)
 
 1. 可以在创建窗口前设置窗口样式，窗口位置（详见 `PreSetWindowStyle` 函数和 `PreSetWindowPos` 函数）
