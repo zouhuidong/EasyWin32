@@ -4,7 +4,7 @@
 //	基于 EasyX 图形库的 Win32 拓展库
 //
 //	作　　者：huidong <mailhuid@163.com>
-//	版　　本：Ver 3.0.0
+//	版　　本：Ver 3.1.0
 //	编译环境：VisualStudio 2022 | EasyX_20220610 | Windows 10 
 //	项目地址：https://github.com/zouhuidong/EasyWin32
 //	创建日期：2020.12.06
@@ -28,9 +28,6 @@
 // 托盘消息
 #define WM_TRAY	(WM_USER + 100)
 
-// 所有类型的消息（等同于 fliter = -1）
-#define EM_ALL (EM_MOUSE | EM_KEY | EM_CHAR | EM_WINDOW)
-
 
 #define EASY_WIN32_BEGIN	namespace EasyWin32 {
 #define EASY_WIN32_END		};
@@ -53,11 +50,7 @@ struct EasyWindow
 	bool(*funcWndProc)						// 窗口消息处理函数
 		(HWND, UINT, WPARAM, LPARAM, HINSTANCE);
 
-	// 模拟 EasyX 窗口消息队列
-	std::vector<ExMessage> vecMouseMsg;		// EM_MOUSE
-	std::vector<ExMessage> vecKeyMsg;		// EM_KEY
-	std::vector<ExMessage> vecCharMsg;		// EM_CHAR
-	std::vector<ExMessage> vecWindowMsg;	// EM_WINDOW
+	std::vector<ExMessage> vecMessage;		// 模拟 EasyX 窗口消息队列
 
 	bool isUseTray;							// 是否使用托盘
 	NOTIFYICONDATA nid;						// 托盘信息
@@ -241,6 +234,11 @@ ExMessage To_ExMessage(MOUSEMSG msg);
 
 // ExMessage 转 MOUSEMSG
 MOUSEMSG To_MouseMsg(ExMessage msgEx);
+
+//// 消息类型判断
+
+// 获取 ExMessage 的 EM 消息类型
+UINT GetExMessageType(ExMessage msg);
 
 
 EASY_WIN32_END
