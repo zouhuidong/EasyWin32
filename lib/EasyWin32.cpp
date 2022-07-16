@@ -2,7 +2,7 @@
 //
 //	EasyWin32.cpp
 //
-//	Ver 3.1.0
+//	Ver 3.1.1
 //
 //
 
@@ -723,8 +723,8 @@ int SetWindowExStyle(long lNewExStyle)
 HICON GetDefaultAppIcon()
 {
 	IMAGE img = GetDefaultIconImage();
-	HBITMAP hBmp = GetImageHBitmap(&img);
-	HICON hIcon = HICONFromHBitmap(hBmp);
+	HBITMAP hBmp = Image2Bitmap(&img);
+	HICON hIcon = Bitmap2Icon(hBmp);
 	DeleteObject(hBmp);
 	return hIcon;
 }
@@ -856,16 +856,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		BOOL repeatFlag = (keyFlags & KF_REPEAT) == KF_REPEAT;        // previous key-state flag, 1 on autorepeat
 		WORD repeatCount = LOWORD(lParam);                            // repeat count, > 0 if several keydown messages was combined into one message
 		BOOL upFlag = (keyFlags & KF_UP) == KF_UP;                    // transition-state flag, 1 on keyup
-
+		
+		// 功能键：不区分左右
 		// if we want to distinguish these keys:
-		switch (vkCode)
-		{
-		case VK_SHIFT:   // converts to VK_LSHIFT or VK_RSHIFT
-		case VK_CONTROL: // converts to VK_LCONTROL or VK_RCONTROL
-		case VK_MENU:    // converts to VK_LMENU or VK_RMENU
-			vkCode = LOWORD(MapVirtualKeyW(scanCode, MAPVK_VSC_TO_VK_EX));
-			break;
-		}
+		//switch (vkCode)
+		//{
+		//case VK_SHIFT:   // converts to VK_LSHIFT or VK_RSHIFT
+		//case VK_CONTROL: // converts to VK_LCONTROL or VK_RCONTROL
+		//case VK_MENU:    // converts to VK_LMENU or VK_RMENU
+		//	vkCode = LOWORD(MapVirtualKeyW(scanCode, MAPVK_VSC_TO_VK_EX));
+		//	break;
+		//}
 
 		ExMessage msgKey = {};
 		msgKey.message = msg;
@@ -877,7 +878,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		g_vecWindows[indexWnd].vecMessage.push_back(msgKey);
 
 		// 给控制台发一份，支持 _getch() 系列函数
-		SendMessage(g_hConsole, msg, wParam, lParam);
+		PostMessage(g_hConsole, msg, wParam, lParam);
 	}
 	break;
 
@@ -890,7 +891,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		g_vecWindows[indexWnd].vecMessage.push_back(msgChar);
 
 		// 通知控制台
-		SendMessage(g_hConsole, msg, wParam, lParam);
+		PostMessage(g_hConsole, msg, wParam, lParam);
 	}
 	break;
 
@@ -1198,42 +1199,14 @@ HWND initgraph_win32(int w, int h, int flag, LPCTSTR strWndTitle, bool(*WindowPr
 	}
 }
 
-
-EASY_WIN32_END
-
 ////////////****** 其他函数 ******////////////
 
-void HpSleep(int ms)
-{
-	static clock_t oldclock = clock();		// 静态变量，记录上一次 tick
-
-	oldclock += ms * CLOCKS_PER_SEC / 1000;	// 更新 tick
-
-	if (clock() > oldclock)					// 如果已经超时，无需延时
-		oldclock = clock();
-	else
-		while (clock() < oldclock)			// 延时
-			Sleep(1);						// 释放 CPU 控制权，降低 CPU 占用率
-//			Sleep(0);						// 更高精度、更高 CPU 占用率
-}
-
-void outtextxy_format(int x, int y, int _Size, const wchar_t* _Format, ...)
-{
-	va_list list;
-	va_start(list, _Format);
-	wchar_t* buf = new wchar_t[_Size];
-	vswprintf_s(buf, _Size, _Format, list);
-	va_end(list);
-	outtextxy(x, y, buf);
-	delete buf;
-}
-
-HBITMAP GetImageHBitmap(IMAGE* img)
+HBITMAP Image2Bitmap(IMAGE* img)
 {
 	return CreateBitmap(img->getwidth(), img->getheight(), 1, 32, (void*)GetImageBuffer(img));
 }
 
-HICON HICONFromHBitmap(HBITMAP hBmp)
+HICON Bitmap2Icon(HBITMAP hBmp)
 {
 	BITMAP bmp = {};
 	GetObject(hBmp, sizeof(BITMAP), &bmp);
@@ -1250,3 +1223,31 @@ HICON HICONFromHBitmap(HBITMAP hBmp)
 
 	return hIcon;
 }
+
+void outtextxy_format(int x, int y, int _Size, const wchar_t* _Format, ...)
+{
+	va_list list;
+	va_start(list, _Format);
+	wchar_t* buf = new wchar_t[_Size];
+	vswprintf_s(buf, _Size, _Format, list);
+	va_end(list);
+	outtextxy(x, y, buf);
+	delete buf;
+}
+
+EASY_WIN32_END
+
+void HpSleep(int ms)
+{
+	static clock_t oldclock = clock();		// 静态变量，记录上一次 tick
+
+	oldclock += ms * CLOCKS_PER_SEC / 1000;	// 更新 tick
+
+	if (clock() > oldclock)					// 如果已经超时，无需延时
+		oldclock = clock();
+	else
+		while (clock() < oldclock)			// 延时
+			Sleep(1);						// 释放 CPU 控制权，降低 CPU 占用率
+//			Sleep(0);						// 更高精度、更高 CPU 占用率
+}
+
