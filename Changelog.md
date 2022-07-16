@@ -1,5 +1,14 @@
 # 更新日志
 
+**Ver3.1.1** (2022.07.16)
+
+1. 加入 `MouseDrag` 鼠标拖动消息处理类，可以更方便地处理鼠标拖动
+2. `GetImageHBitmap` 改为 `EasyWin32::Image2Bitmap`
+3. `HICONFromHBitmap` 改为 `EasyWin32::Bitmap2Icon`
+4. `outtextxy_format` 改为 `EasyWin32::outtextxy_format`
+
+---
+
 **Ver3.1.0** (2022.07.15)
 
 1. 消息处理机制改为单队列
