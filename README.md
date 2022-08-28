@@ -6,6 +6,11 @@
 ![Forks](https://img.shields.io/github/forks/zouhuidong/EasyWin32)
 ![Downloads](https://img.shields.io/github/downloads/zouhuidong/EasyWin32/total)
 
+## 不再维护
+> EasyWin32 将不再被维护。请使用 [HiEasyX](https://github.com/zouhuidong/HiEasyX) 代替 EasyWin32，它有比 EasyWin32 更丰富的功能。
+
+## 简介
+
 EasyWin32 是基于 EasyX 的 Win32 拓展库，支持多窗口绘图、调整窗口大小、调用 Win32 控件、快速创建托盘等功能。
 
 EasyWin32 对原生 EasyX 兼容性超强~~ 只需稍稍改动您的代码，就可以在原有项目上应用 EasyWin32。
