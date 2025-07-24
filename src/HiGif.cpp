@@ -1,5 +1,5 @@
-#include "HiGif.h"
-#include "HiWindow.h"
+#include <HiEasyX/HiGif.h>
+#include <HiEasyX/HiWindow.h>
  
 #ifdef _MSC_VER
 #pragma comment (lib, "gdiplus.lib")

@@ -1,4 +1,4 @@
-#include "HiMusicMCI.h"
+#include <HiEasyX/HiMusicMCI.h>
 #include <Digitalv.h>
 
 #ifdef _MSC_VER

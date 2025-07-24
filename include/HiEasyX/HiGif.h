@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include <graphics.h>
-#include <gdiplus.h>
+#include <HiEasyX/HiWindow.h>
 #include <time.h>
 #include <stdio.h>
 
@@ -57,7 +56,7 @@ namespace HiEasyX
 
 	public:
 
-		Gif(const WCHAR* gifFileName = nullptr, HDC hdc = GetImageHDC());
+		Gif(const WCHAR* gifFileName = nullptr, HDC hdc = GetImageHDCHX());
 		Gif(const Gif& gif);
 
 		virtual ~Gif();

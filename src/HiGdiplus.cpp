@@ -1,5 +1,6 @@
-#include "HiGdiplus.h"
-#include "HiMacro.h"
+#include <HiEasyX/HiGdiplus.h>
+#include <HiEasyX/HiMacro.h>
+#include <HiEasyX/HiWindow.h>
 
 #ifdef _MSC_VER
 #pragma comment (lib, "gdiplus.lib")
@@ -250,7 +251,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_Line(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x1, y1, x2, y2,
 			ConvertToGdiplusColor(linecolor, enable_alpha),
 			linewidth,
@@ -277,7 +278,7 @@ namespace HiEasyX
 		}
 
 		Gdiplus_Polygon(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			points_num,
 			pPts,
 			ConvertToGdiplusColor(linecolor, enable_alpha),
@@ -306,7 +307,7 @@ namespace HiEasyX
 		}
 
 		Gdiplus_SolidPolygon(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			points_num,
 			pPts,
 			ConvertToGdiplusColor(fillcolor, enable_alpha),
@@ -344,7 +345,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_Rectangle(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h,
 			ConvertToGdiplusColor(linecolor, enable_alpha),
 			linewidth,
@@ -364,7 +365,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_SolidRectangle(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h,
 			ConvertToGdiplusColor(fillcolor, enable_alpha),
 			smoothing_mode
@@ -406,7 +407,7 @@ namespace HiEasyX
 		if (ellipseheight > h - 1) ellipseheight = h - 1;
 
 		Gdiplus_Try_Starup();
-		Gdiplus::Graphics graphics(GetImageHDC(pImg));
+		Gdiplus::Graphics graphics(GetImageHDCHX(pImg));
 		graphics.SetSmoothingMode(smoothing_mode);
 
 		Gdiplus::Pen pen(ConvertToGdiplusColor(linecolor, enable_alpha), linewidth);
@@ -438,7 +439,7 @@ namespace HiEasyX
 		if (ellipseheight > h - 1) ellipseheight = h - 1;
 
 		Gdiplus_Try_Starup();
-		Gdiplus::Graphics graphics(GetImageHDC(pImg));
+		Gdiplus::Graphics graphics(GetImageHDCHX(pImg));
 		graphics.SetSmoothingMode(smoothing_mode);
 
 		Gdiplus::SolidBrush brush(ConvertToGdiplusColor(fillcolor, enable_alpha));
@@ -472,7 +473,7 @@ namespace HiEasyX
 		if (ellipseheight > h - 1) ellipseheight = h - 1;
 
 		Gdiplus_Try_Starup();
-		Gdiplus::Graphics graphics(GetImageHDC(pImg));
+		Gdiplus::Graphics graphics(GetImageHDCHX(pImg));
 		graphics.SetSmoothingMode(smoothing_mode);
 
 		Gdiplus::Pen pen(ConvertToGdiplusColor(linecolor, enable_alpha), linewidth);
@@ -502,7 +503,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_Ellipse(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h,
 			ConvertToGdiplusColor(linecolor, enable_alpha),
 			linewidth,
@@ -522,7 +523,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_SolidEllipse(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h,
 			ConvertToGdiplusColor(fillcolor, enable_alpha),
 			smoothing_mode
@@ -561,7 +562,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_Pie(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h, -stangle, -(endangle - stangle) /* sweepangle */,
 			ConvertToGdiplusColor(linecolor, enable_alpha),
 			linewidth,
@@ -583,7 +584,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_SolidPie(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h, -stangle, -(endangle - stangle),
 			ConvertToGdiplusColor(fillcolor, enable_alpha),
 			smoothing_mode
@@ -624,7 +625,7 @@ namespace HiEasyX
 	)
 	{
 		Gdiplus_Arc(
-			GetImageHDC(pImg),
+			GetImageHDCHX(pImg),
 			x, y, w, h, -stangle, -(endangle - stangle),
 			ConvertToGdiplusColor(linecolor, enable_alpha),
 			linewidth,

@@ -1,11 +1,11 @@
-#include "HiDrawingProperty.h"
+#include <HiEasyX/HiDrawingProperty.h>
+#include <HiEasyX/HiWindow.h>
 
 namespace HiEasyX
 {
 	void DrawingProperty::SaveProperty()
 	{
 		m_pImg = GetWorkingImage();
-		getaspectratio(&m_xasp, &m_yasp);
 		m_cBk = getbkcolor();
 		m_nBkMode = getbkmode();
 		m_cFill = getfillcolor();
@@ -30,8 +30,7 @@ namespace HiEasyX
 	{
 		if (m_isSaved)
 		{
-			SetWorkingImage(m_pImg);
-			setaspectratio(m_xasp, m_yasp);
+			SetWorkingImageHX(m_pImg);
 			setbkcolor(m_cBk);
 			setbkmode(m_nBkMode);
 			setfillcolor(m_cFill);
@@ -49,7 +48,7 @@ namespace HiEasyX
 	{
 		if (m_isSaved)
 		{
-			SetWorkingImage(m_pImg);
+			SetWorkingImageHX(m_pImg);
 		}
 	}
 

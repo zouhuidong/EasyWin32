@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "HiMiscUtils.h"
+#include <HiEasyX/HiMiscUtils.h>
 
 #include <ctime>
 #include <thread>

@@ -25,7 +25,6 @@ namespace HiEasyX
 
 	public:
 		IMAGE* m_pImg;
-		float m_xasp, m_yasp;
 		COLORREF m_cBk;
 		int m_nBkMode;
 		COLORREF m_cFill;

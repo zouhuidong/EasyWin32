@@ -1,5 +1,5 @@
-#include "HiFPS.h"
-#include "HiWindow.h"
+#include <HiEasyX/HiFPS.h>
+#include <HiEasyX/HiWindow.h>
 
 namespace HiEasyX
 {

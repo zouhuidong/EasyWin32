@@ -1,5 +1,5 @@
-#include "HiGraphicsUtils.h"
-#include "HiWindow.h"
+#include <HiEasyX/HiGraphicsUtils.h>
+#include <HiEasyX/HiWindow.h>
 
 #ifdef _MSC_VER
 #pragma comment (lib, "Msimg32.lib")
@@ -105,8 +105,8 @@ namespace HiEasyX
 
 	void TransparentImage(IMAGE* Dstimg, int DstimgX, int DstimgY, IMAGE* Srcimg, int transparency)
 	{
-		HDC dstDC = GetImageHDC(Dstimg);
-		HDC srcDC = GetImageHDC(Srcimg);
+		HDC dstDC = GetImageHDCHX(Dstimg);
+		HDC srcDC = GetImageHDCHX(Srcimg);
 		int w = Srcimg->getwidth();
 		int h = Srcimg->getheight();
 
@@ -117,8 +117,8 @@ namespace HiEasyX
 	}
 	void TransparentImage(IMAGE* Dstimg, int DstimgX, int DstimgY, int DstimgWidth, int DstimgHeight, IMAGE* Srcimg, int SrcimgX, int SrcimgY, int SourceWidth, int SourceHeight, int transparency)
 	{
-		HDC dstDC = GetImageHDC(Dstimg);
-		HDC srcDC = GetImageHDC(Srcimg);
+		HDC dstDC = GetImageHDCHX(Dstimg);
+		HDC srcDC = GetImageHDCHX(Srcimg);
 
 		// 结构体的第三个成员表示额外的透明度，0 表示全透明，255 表示不透明。
 		BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)transparency, AC_SRC_ALPHA };
@@ -136,11 +136,11 @@ namespace HiEasyX
 		if (w == 0) w = int(DstW * (double(h) / double(DstH)));
 		if (h == 0) h = int(DstH * (double(w) / double(DstW)));
 
-		HDC DstDC = GetImageHDC(img);
+		HDC DstDC = GetImageHDCHX(img);
 
 		Resize(img, w, h);
 		SetImageColor(*img, 0, true);
-		HDC SrcDC = GetImageHDC(img);
+		HDC SrcDC = GetImageHDCHX(img);
 
 		// 结构体的第三个成员表示额外的透明度，0 表示全透明，255 表示不透明。
 		BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };

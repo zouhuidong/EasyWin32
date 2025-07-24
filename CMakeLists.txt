@@ -4,38 +4,51 @@ project(HiEasyX LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 获取当前平台架构（x86或x64）
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(PLATFORM_ARCH "x64")
+else()
+    set(PLATFORM_ARCH "x86")
+endif()
+
+# 定义输出路径模板（架构 -> 配置 -> 字符集）
+set(OUTPUT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/output)
+set(LIB_OUTPUT_DIR ${OUTPUT_BASE_DIR}/lib/$<CONFIG>/${PLATFORM_ARCH})
+set(BIN_OUTPUT_DIR ${OUTPUT_BASE_DIR}/bin/$<CONFIG>/${PLATFORM_ARCH})
+
+
 # 根 include 目录下的头文件
 set(HIEX_ROOT_INCLUDE_HEADERS
-    include/HiCanvas.h
-    include/HiContainer.h
-    include/HiDef.h
-    include/HiDrawingProperty.h
     include/HiEasyX.h
-    include/HiFPS.h
-    include/HiGdiplus.h
-    include/HiGif.h
-    include/HiGraphicsUtils.h
-    include/HiIcon.h
-    include/HiMacro.h
-    include/HiMiscUtils.h
-    include/HiMouseDrag.h
-    include/HiMusicMCI.h
-    include/HiString.h
-    include/HiWindow.h
+    include/HiEasyX/HiCanvas.h
+    include/HiEasyX/HiContainer.h
+    include/HiEasyX/HiDef.h
+    include/HiEasyX/HiDrawingProperty.h
+    include/HiEasyX/HiFPS.h
+    include/HiEasyX/HiGdiplus.h
+    include/HiEasyX/HiGif.h
+    include/HiEasyX/HiGraphicsUtils.h
+    include/HiEasyX/HiIcon.h
+    include/HiEasyX/HiMacro.h
+    include/HiEasyX/HiMiscUtils.h
+    include/HiEasyX/HiMouseDrag.h
+    include/HiEasyX/HiMusicMCI.h
+    include/HiEasyX/HiString.h
+    include/HiEasyX/HiWindow.h
 )
 
 # HiSysGUI 子目录下的头文件
 set(HIEX_SYSGUI_INCLUDE_HEADERS
-    include/HiSysGUI/HiSysGUI.h
-    include/HiSysGUI/SysButton.h
-    include/HiSysGUI/SysCheckBox.h
-    include/HiSysGUI/SysComboBox.h
-    include/HiSysGUI/SysControlBase.h
-    include/HiSysGUI/SysEdit.h
-    include/HiSysGUI/SysGroup.h
-    include/HiSysGUI/SysGroupBox.h
-    include/HiSysGUI/SysRadioButton.h
-    include/HiSysGUI/SysStatic.h
+    include/HiEasyX/HiSysGUI/HiSysGUI.h
+    include/HiEasyX/HiSysGUI/SysButton.h
+    include/HiEasyX/HiSysGUI/SysCheckBox.h
+    include/HiEasyX/HiSysGUI/SysComboBox.h
+    include/HiEasyX/HiSysGUI/SysControlBase.h
+    include/HiEasyX/HiSysGUI/SysEdit.h
+    include/HiEasyX/HiSysGUI/SysGroup.h
+    include/HiEasyX/HiSysGUI/SysGroupBox.h
+    include/HiEasyX/HiSysGUI/SysRadioButton.h
+    include/HiEasyX/HiSysGUI/SysStatic.h
 )
 
 # 源文件 - src根目录
@@ -83,19 +96,52 @@ set(HIEX_ALL_SRC_FILES
 #    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 #)
 
-# 构建静态库
-add_library(HiEasyXLib STATIC 
-	${HIEX_ALL_INCLUDE_HEADERS}		# 把头文件也加进来
-	${HIEX_ALL_SRC_FILES}
-)
 
-# 设置库包含目录，PUBLIC 表示引用该库的目标也会继承这些目录
-target_include_directories(HiEasyXLib PUBLIC 
-    include
-#    $<INSTALL_INTERFACE:include>  # 支持安装后使用
+# 构建静态库 - Unicode版本（w后缀）
+add_library(HiEasyXw STATIC 
+    ${HIEX_ALL_INCLUDE_HEADERS}
+    ${HIEX_ALL_SRC_FILES}
 )
+target_compile_definitions(HiEasyXw PRIVATE HIEASYX_LIB_EXPORT UNICODE _UNICODE)
+set_target_properties(HiEasyXw PROPERTIES 
+    ARCHIVE_OUTPUT_DIRECTORY "${LIB_OUTPUT_DIR}"
+)
+target_include_directories(HiEasyXw PUBLIC include)
 
-# 示例代码
-add_executable(example_hello_world examples/helloworld.cpp)
-target_link_libraries(example_hello_world HiEasyXLib)
+
+# 构建静态库 - 多字节版本（a后缀）
+add_library(HiEasyXa STATIC 
+    ${HIEX_ALL_INCLUDE_HEADERS}
+    ${HIEX_ALL_SRC_FILES}
+)
+target_compile_definitions(HiEasyXa PRIVATE HIEASYX_LIB_EXPORT _MBCS)
+set_target_properties(HiEasyXa PROPERTIES 
+    ARCHIVE_OUTPUT_DIRECTORY "${LIB_OUTPUT_DIR}"
+)
+target_include_directories(HiEasyXa PUBLIC include)
+
+
+# 定义添加示例的宏
+macro(add_example example_name source_file)
+    # Unicode版本
+    add_executable(${example_name}_w ${source_file})
+    target_link_libraries(${example_name}_w HiEasyXw)
+    target_compile_definitions(${example_name}_w PRIVATE UNICODE _UNICODE)
+    set_target_properties(${example_name}_w PROPERTIES 
+        RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_DIR}"
+    )
+    
+    # 多字节版本
+    add_executable(${example_name}_a ${source_file})
+    target_link_libraries(${example_name}_a HiEasyXa)
+    target_compile_definitions(${example_name}_a PRIVATE _MBCS)
+    set_target_properties(${example_name}_a PROPERTIES 
+        RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_DIR}"
+    )
+endmacro()
+
+# 使用宏添加示例代码
+add_example(avoid-while-yangw80 examples/avoid-while-yangw80.cpp)
+add_example(avoid-white-blocks examples/avoid-white-blocks.cpp)
+add_example(chess-marathon examples/chess-marathon.cpp)
 

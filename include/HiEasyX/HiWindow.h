@@ -4,12 +4,22 @@
  * @author	huidong
 */
 
+/**
+ * 说明：
+ *		凡是 HWND 传入 nulllptr 的，代表当前活动窗口；
+ *		凡是 IMAGE* 传入 nullptr 的，代表当前活动窗口的图像指针（而不是当前活动图像）。
+ * 
+ *		以上设置是为了兼容 EasyX 原生的设定，
+ *		为了避免不必要的麻烦，建议总是明确指定要操作的窗口或图像。
+ */
+
+
 #pragma once
 
-#include "HiDef.h"
-#include "HiString.h"
-#include "HiMiscUtils.h"
-#include "HiCanvas.h"
+#include <HiEasyX/HiDef.h>
+#include <HiEasyX/HiString.h>
+#include <HiEasyX/HiMiscUtils.h>
+#include <HiEasyX/HiCanvas.h>
 #include <windowsx.h>
 #include <WinUser.h>
 #include <vector>
@@ -74,6 +84,8 @@ namespace HiEasyX
 		 * </pre>
 		*/
 		Canvas* pCanvas;							///< 窗口图像
+		float xasp;									///< 刷新窗口缓冲时使用的缩放比例（x 轴）
+		float yasp;									///< 刷新窗口缓冲时使用的缩放比例（y 轴）
 		
 		// 已弃用，直接使用 pCanvas
 		//IMAGE* pImg;								///< 窗口图像
@@ -178,6 +190,14 @@ namespace HiEasyX
 		//IMAGE* GetImage();
 		Canvas* GetCanvas() const;
 		//void BindCanvas(Canvas* pCanvas);
+
+		///< 设置窗口画布原点
+		void SetOrigin(int x, int y) const;
+		void GetOrigin(int* x, int* y) const;
+		
+		///< 设置窗口画布缩放比例
+		void SetAspectRatio(float xasp, float yasp) const;
+		void GetAspectRatio(float* xasp, float* yasp) const;
 
 		//void WaitMyTask();
 		bool SetWorkingWindow();
@@ -342,8 +362,17 @@ namespace HiEasyX
 		HWND hParent = nullptr
 	);
 
+	/**
+	 * @brief 创建 EasyX 绘图窗口（将开启一系列兼容性选项，以模拟原始的 EasyX 设置）
+	*/
+	HWND initgraphCompatible(
+		int w,
+		int h,
+		int flag = EW_NORMAL
+	);
+
 	bool init_console();	/// 初始化命令行窗口（最多只维持一个命令行窗口）
-	bool hide_console();	/// 隐藏命令行窗口（Win11 下测试只能最小化）
+	bool hide_console();	/// 隐藏命令行窗口
 	bool close_console();	/// 关闭命令行窗口（直接运行程序时可以关闭命令行，但是在 VS 中调试时可能无法关闭）
 
 	/**
@@ -365,6 +394,27 @@ namespace HiEasyX
 	void closeallgraph();
 
 	/**
+	 * @brief 当所有窗口都被销毁时，自动退出程序
+	 * @note <pre>
+	 *		在创建第一个窗口之前也可以调用此函数（Ver0.5.0 以前可能不行）
+	 * 
+	 *		原理：
+	 *		即在 WM_DESTROY 中判断当前窗口销毁后是否还有窗口存在，如果没有则 PostQuitMessage()，
+	 *		然后 MsgLoopHX() 接收到 WM_QUIT 消息，执行 exit() 退出程序。
+	 *		若不调用此函数，则所有窗口被销毁后，程序也不会直接退出，在这种情况下，用户需要根据 IsAnyWindow() 决定是否退出程序。
+	 * 
+	 *		该函数主要用于兼容原生 EasyX 代码。
+	 * </pre>
+	*/
+	void AutoExit(bool enable);
+
+	/**
+	 * @brief 只允许一个绘图窗口存在，重复创建绘图窗口时关闭先前的窗口
+	 * @note 该函数主要用于兼容原生 EasyX 代码
+	*/
+	void SingleGraphWindow(bool enable);
+
+	/**
 	 * @brief 设置某窗口的过程函数
 	 * @param[in] hWnd 窗口句柄（为空标识当前活动窗口）
 	 * @param[in] WindowProcess 新的过程函数
@@ -372,10 +422,15 @@ namespace HiEasyX
 	void SetWndProcFunc(HWND hWnd, WNDPROC WindowProcess);
 
 	/**
-	 * @brief HiEasyX 内部消息循环函数
+	 * @brief HiEasyX 内部消息循环函数（非阻塞）
 	 * @note <pre>
 	 *		需要在程序主循环中调用此函数，否则窗口无法响应消息
-	 *		HiEasyX::getmessageHX(), HiEasyX::SleepHX(), HiEasyX::HpSleepHX() 内部等待消息时会自动调用此函数，以维持窗口消息响应
+	 * 
+	 *		会自动调用 MsgLoopHX() 的函数：
+	 *		* HiEasyX::getmessageHX(), HiEasyX::peekmessageHX() 等所有消息相关函数；
+	 *		* HiEasyX::SleepHX(), HiEasyX::HpSleepHX()
+	 * 
+	 *		上述函数会自动调用消息循环，以在阻塞时或需要获取消息时驱动消息循环运行，以维持程序正常运作。
 	 * </pre>
 	*/
 	void MsgLoopHX();
@@ -403,19 +458,6 @@ namespace HiEasyX
 	*/
 	HWND GetHWndHX();
 
-	// 已弃用
-	///**
-	// * @brief 初始化窗口结束后，可以用此函数阻塞等待目标窗口被关闭，然后函数返回
-	// * @param[in] hWnd 目标窗口（为空代表所有窗口）
-	//*/
-	//void init_end(HWND hWnd = nullptr);
-
-	/**
-	 * @brief 当所有窗口都被销毁时，自动退出程序
-	 * @note 在创建第一个窗口之前也可以调用此函数（Ver0.5.0 以前可能不行）
-	*/
-	void AutoExit();
-
 	/**
 	 * @brief 是否还存在未销毁的绘图窗口
 	*/
@@ -428,14 +470,6 @@ namespace HiEasyX
 	*/
 	bool IsWindowExists(HWND hWnd = nullptr);
 
-	// 已弃用，请直接使用 GetWindowCanvas
-	///**
-	// * @brief 获取某窗口的图像指针
-	// * @param[in] hWnd 窗口句柄（为空表示当前活动窗口）
-	// * @return 缓冲区图像指针
-	//*/
-	//IMAGE* GetWindowImage(HWND hWnd = nullptr);
-
 	/**
 	 * @brief 获取窗口画布指针
 	 * @param[in] hWnd 窗口句柄（为空表示当前活动窗口）
@@ -445,7 +479,7 @@ namespace HiEasyX
 
 	/**
 	 * @brief 获取图像缓冲区指针（替代 EasyX 原生 GetImageBuffer 函数）
-	 * @param[in] img（图像指针）
+	 * @param[in] img（图像指针，nullptr 表示当前活动窗口图像指针）
 	 * @return 图像缓冲区指针
 	 * @attention <pre>
 	 *		使用 HiWindow 时，向原生的 GetImageBuffer 函数传入 nullptr 无法对应得到当前活动窗口的图像缓冲区，
@@ -457,21 +491,66 @@ namespace HiEasyX
 	 * </pre>
 	 * @throw 如果传入 nullptr 但当前没有活动窗口，则抛出 runtime_error 异常。
 	*/
-	DWORD* GetImageBufferHX(IMAGE* img);
+	DWORD* GetImageBufferHX(IMAGE* img = nullptr);
 
-	// 已弃用
-	///**
-	// * @brief <pre>
-	// *		绑定窗口画布指针
-	// *
-	// *	备注：
-	// *		绑定后，使用画布绘图时将自动开启任务，无需用户开启，但不会自动刷新屏幕
-	// * </pre>
-	// *
-	// * @param[in] pCanvas 画布指针
-	// * @param[in] hWnd 窗口句柄（为空表示当前活动窗口）
-	//*/
-	//void BindWindowCanvas(Canvas* pCanvas, HWND hWnd = nullptr);
+	/**
+	 * @brief 获取图像 HDC（替代 EasyX 原生 GetImageHDC 函数），无需 ReleaseDC
+	 * @param[in] img（图像指针，nullptr 表示当前活动窗口图像指针）
+	 * @return 图像缓冲区指针
+	 * @attention 必须使用该函数替代 EasyX 原生 GetImageHDC 函数，其原因参见 GetImageBufferHX 函数的说明。
+	 * @throw 如果传入 nullptr 但当前没有活动窗口，则抛出 runtime_error 异常。
+	*/
+	HDC GetImageHDCHX(IMAGE* img = nullptr);
+
+	/**
+	 * @brief 设置活动 IMAGE 对象（替代 EasyX 原生 SetWorkingImage 函数）
+	 * @param[in] img（图像指针，nullptr 表示当前活动窗口图像指针）
+	 * @attention 建议使用该函数替代 EasyX 原生 SetWorkingImage 函数，其原因与 GetImageBufferHX 函数类似。
+	 * @throw 即使设置失败，也不会抛出异常
+	*/
+	void SetWorkingImageHX(IMAGE* img = nullptr);
+
+	/**
+	 * @brief 设置窗口画布的绘制原点
+	 * @param[in] x 原点 x 坐标
+	 * @param[in] x 原点 y 坐标
+	 * @param[in] hwnd 窗口句柄（为空表示当前活动窗口）
+	 * @attention 该函数只对窗口画布有效
+	 * @note <pre>
+	 *		此函数原理为调用 GDI 函数 SetViewportOrgEx() 设置原点，随后 GDI 绘制内容都会以设置的原点坐标为基准。
+	 *		但是这样设置以后，IMAGE 的真实左上角坐标便不再是 (0, 0) 而是 (-x_org, -y_org)，因此若要正确输出此图像，
+	 *		需要在输出时特别指定原图像的输出原点。
+	 *		然而，EasyX 的 putimage 等并不支持此设置（可能因为是逐像素复制），因此无法配合实现原点设置效果。
+	 *		因此，和 setaspectratioHX 函数一样，此函数也仅对窗口画布有效。
+	 * </pre>
+	*/
+	void setoriginHX(int x, int y, HWND hwnd = nullptr);
+
+	/**
+	 * @brief 获取窗口画布的原点坐标
+	*/
+	void getoriginHX(int* px, int* py, HWND hwnd = nullptr);
+
+	/**
+	 * @brief 设置窗口画布的缩放比例
+	 * @param[in] xasp x 轴缩放比例（可以为负值）
+	 * @param[in] yasp y 轴缩放比例（可以为负值）
+	 * @param[in] hwnd 窗口句柄（为空表示当前活动窗口）
+	 * @attention 该函数只对窗口画布有效
+	 * @note <pre>
+	 *		该函数原理是将窗口画布大小调整为 w/xasp * h/yasp，而绘制时坐标并不发生变化，
+	 *		仅在窗口刷新缓冲时将窗口画布缩放为 w * h 刷新到屏幕上，因此实现缩放效果。
+	 * 
+	 *		由此可见，该函数不能像 setorigin 那样对一切 IMAGE 均适用，因为一般的 putimage 函数是直接按像素点复制，
+	 *		并不能配合完成最后一步的缩放。窗口画布的绘制由于可以在 WM_PAINT 时采用带缩放的方式，因而可以实现此功能。
+	 * </pre>
+	*/
+	void setaspectratioHX(float xasp, float yasp, HWND hwnd = nullptr);
+
+	/**
+	 * @brief 获取窗口画布的缩放比例
+	*/
+	void getaspectratioHX(float* pxasp, float* pyasp, HWND hwnd = nullptr);
 
 	/**
 	 * @brief 得到当前绘图窗口的详细信息
@@ -512,86 +591,38 @@ namespace HiEasyX
 	*/
 	void FlushAllWindowBuffer(bool bInstant = false);
 
-	// 已弃用
-	///**
-	// * @brief <pre>
-	// *		更新当前活动窗口的双缓冲
-	// *
-	// *	注意：
-	// *		由于安全性问题，必须在窗口任务内调用此函数，否则不会更新双缓冲。
-	// *
-	// *	备注：
-	// *		若要重绘窗口请使用 RedrawWindow
-	// *
-	// *	示例：
-	// * @code
-	//		BEGIN_TASK();
-	//		hiex::FlushDrawing({ 200,200,300,300 });
-	//		END_TASK(false);	// 注意，结束任务时标记 false 表示不更新双缓冲，因为上面已经更新过了
-	//		REDRAW_WINDOW();
-	// * @endcode
-	// * </pre>
-	// *
-	// * @param[in] rct	双缓冲更新区域（坐标都为 0 表示全部区域）
-	//*/
-	//void FlushDrawing(RECT rct = { 0 });
+	/**
+	 * @brief 自动刷新绘图窗口缓冲区（即在 MsgLoopHX() 中自动执行 FlushAllWindowBuffer()）
+	 * @note <pre>
+	 *		该函数主要用于兼容原生 EasyX 代码
+	 * 
+	 *		按照 HiEasyX 的设计，用户应在程序主循环中调用 FlushWindowBuffer() 函数以输出绘图缓冲，
+	 *		并调用 MsgLoopHX() 函数维持窗口消息处理。
+	 * 
+	 *		为了兼容原生 EasyX 代码，以及应对 getmessage 等阻塞的情况，在多种情况下，
+	 *		HiEasyX 内部将自动调用 MsgLoopHX() 以维持消息循环（详见 MsgLoopHX 函数注释）。
+	 *		所以，即使用户不显式调用 MsgLoopHX()，一般只要他们有调用 getmessage, Sleep 等函数（被宏定义过），程序也可以正常运行。
+	 *		但是，HiEasyX 一般并不在内部调用 FlushWindowBuffer()，如果用户忘记在绘制完成后调用 FlushWindowBuffer()，
+	 *		则他们很可能看不到绘制结果。
+	 * 
+	 *		HiEasyX 为了兼容原生 EasyX 代码，同时给出以下两个解决方案：
+	 *		1. 原本的双缓冲函数 FLushBatchDraw 和 EndBatchDraw 被宏定义为刷新窗口缓冲并进行消息循环。
+	 *		2. 提供 AutoFlushWindowBuffer() 函数，即在 MsgLoopHX() 中自动调用 FlushAllWindowBuffer()。
+	 * 
+	 *		对于本来使用了双缓冲的 EasyX 代码，几乎完全不需要修改就可以在 HiEasyX 上运行。
+	 *		对于原本没有使用双缓冲的 EasyX 代码，则需要在关键位置添加 FlushWindowBuffer()（较麻烦），
+	 *		或者直接开启 AutoFlushWindowBuffer()，这样就可以看到绘图效果。
+	 * 
+	 *		还有一种极端情况，如果原 EasyX 代码中没有调用任何可以自动进行 MsgLoopHX() 的函数或宏
+	 *		（如 getmessage, Sleep, FlushBatchDraw）等，则该代码可能会在 HiEasyX 上运行时卡死，
+	 *		此时必须对源码进行必要的修改。不过，这种情况是很少见的。
+	 * </pre>
+	*/
+	void AutoFlushWindowBuffer(bool enable);
 
-	// 已弃用
-	///**
-	// * @brief <pre>
-	// *		是否启用自动刷新双缓冲
-	// *
-	// *	备注：
-	// *		默认情况下是自动刷新双缓冲的，即每次结束窗口任务时，EndTask 会根据传入的参数，
-	// *		决定要不要标记“需要刷新双缓冲”，标记后，窗口将会在下一次遇到重绘消息的时候刷新双缓冲。
-	// *
-	// *		但是，在频繁重绘的情况下，由于多线程协调问题，自动刷新的效率可能会变低。
-	// *		所以你可以关闭自动刷新双缓冲，相应地，你需要使用 FlushDrawing 函数手动刷新双缓冲。
-	// * </pre>
-	//*/
-	//void EnableAutoFlush(bool enable);
-
-	// 已弃用
-	///**
-	// * @brief <pre>
-	// *		为当前活动窗口启动任务
-	// *
-	// *	备注：
-	// *		调用 EasyX 函数进行绘图或获取消息时，都应当启动任务。
-	// * </pre>
-	// *
-	// * @return 是否启动成功（若已在任务中也返回 true）
-	//*/
-	//bool BeginTask();
-
-	// 已弃用
-	///**
-	// * @brief 终止当前窗口任务
-	// * @param[in] flush 是否标记需要更新双缓冲（但不会自动刷新窗口）
-	//*/
-	//void EndTask(bool flush = true);
-
-	// 已弃用
-	///**
-	// * @brief <pre>
-	// *		判断某窗口是否在任务中
-	// *
-	// *	备注：
-	// *		窗口任务是队列式的，只有活动窗口可能处在任务中。
-	// *		故若传入窗口不是活动窗口，将直接返回 false。
-	// * </pre>
-	// *
-	// * @param[in] hWnd 窗口句柄（为空表示当前活动窗口）
-	// * @return 是否在任务中
-	//*/
-	//bool IsInTask(HWND hWnd = nullptr);
-
-	// 已弃用
-	///**
-	// * @brief 阻塞等待某窗口任务完成
-	// * @param[in] hWnd 窗口句柄（为空表示当前活动窗口）
-	//*/
-	//void WaitForTask(HWND hWnd = nullptr);
+	void BeginBatchDrawHX();	///< 仅用于兼容 EasyX 的 BeginBatchDraw 函数
+	void FlushBatchDrawHX();	///< 仅用于兼容 EasyX 的 FlushBatchDraw 函数
+	void EndBatchDrawHX();		///< 仅用于兼容 EasyX 的 EndBatchDraw 函数
 
 	/**
 	 * @brief 判断某窗口的大小是否改变
@@ -759,6 +790,11 @@ namespace HiEasyX
 	void SetWindowTransparent(HWND HWnd, bool enable, int alpha = 0xFF);
 
 	////////////****** 消息相关函数 ******////////////
+
+	/**
+	 * 注：
+	 *		消息相关函数在调用时都会在内部进行 MsgLoopHX()，以便可以获取到最新的消息。
+	*/
 
 	//// ExMessage 式函数
 

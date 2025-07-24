@@ -1,4 +1,4 @@
-#include "HiSysGUI/SysRadioButton.h"
+#include <HiEasyX/HiSysGUI/SysRadioButton.h>
 #include <tchar.h>
 
 namespace HiEasyX

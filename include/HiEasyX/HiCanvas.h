@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "HiString.h"
-#include "HiMiscUtils.h"
-#include "HiGraphicsUtils.h"
+#include <HiEasyX/HiString.h>
+#include <HiEasyX/HiMiscUtils.h>
+#include <HiEasyX/HiGraphicsUtils.h>
 #include <vector>
 #include <list>
 #include <string>
@@ -33,6 +33,7 @@ namespace HiEasyX
 		IMAGE* m_pImgPrevious;					///< 转移 Working Image 之前的绘图对象
 
 		DWORD* m_pBuf = nullptr;			///< 图像内存指针
+		HDC m_hdc = nullptr;				///< 图像内存指针
 
 		//bool m_bBindToImgPointer;			///< 该画布是否绑定到图像指针
 		//IMAGE* m_pImg;						///< 画布绑定的图像指针（若画布绑定到指针）
@@ -165,7 +166,7 @@ namespace HiEasyX
 		/**
 		 * @brief 获取画布的 HDC
 		*/
-		HDC GetHDC() { return GetImageHDC(this); }
+		HDC GetHDC() const { return m_hdc; }
 
 		int GetWidth() const { return getwidth(); }
 		int GetHeight() const { return getheight(); }

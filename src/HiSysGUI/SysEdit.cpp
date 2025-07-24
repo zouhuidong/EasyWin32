@@ -1,4 +1,4 @@
-#include "HiSysGUI/SysEdit.h"
+#include <HiEasyX/HiSysGUI/SysEdit.h>
 #include <tchar.h>
 
 namespace HiEasyX

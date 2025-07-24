@@ -1,6 +1,6 @@
-#include "HiSysGUI/SysControlBase.h"
+#include <HiEasyX/HiSysGUI/SysControlBase.h>
 
-#include "HiWindow.h"
+#include <HiEasyX/HiWindow.h>
 
 namespace HiEasyX
 {

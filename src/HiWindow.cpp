@@ -1,9 +1,9 @@
-#include "HiWindow.h"
+#include <HiEasyX/HiWindow.h>
 
-#include "HiMacro.h"
-#include "HiIcon.h"
-#include "HiGdiplus.h"
-#include "HiSysGUI/SysControlBase.h"
+#include <HiEasyX/HiMacro.h>
+#include <HiEasyX/HiIcon.h>
+#include <HiEasyX/HiGdiplus.h>
+#include <HiEasyX/HiSysGUI/SysControlBase.h>
 
 #include <cassert>
 #include <stdexcept>
@@ -23,14 +23,15 @@ namespace HiEasyX
 	////////////****** 全局变量 ******////////////
 
 	static WNDCLASSEX				g_WndClassEx;								///< 窗口类
-	static TCHAR					g_lpszClassName[] = HXStr("HiEasyX");		///< 窗口类名
+	static TCHAR					g_lpszClassName[] = _T("HiEasyX");			///< 窗口类名
 	static ScreenSize				g_screenSize;								///< 显示器信息
 	static HINSTANCE				g_hInstance = GetModuleHandle(0);			///< 程序实例
 
 	static std::vector<EasyWindow>	g_vecWindows;								///< 窗口列表（管理多窗口）（由于一般程序窗口很少，故无需 map）
 	static int						g_nFocusWindowIndex = NO_WINDOW_INDEX;		///< 当前操作焦点窗口索引
+	static bool						g_bSingleWindow = false;					///< 标记是否在所有窗口被销毁时自动退出程序
 	static bool						g_bAutoExit = false;						///< 标记是否在所有窗口被销毁时自动退出程序
-
+	static bool						g_bAutoFlush = false;						///< 标记是否自动刷新所有窗口缓冲
 	//static bool					g_isInTask = false;							///< 标记处于任务中
 
 	static HICON					g_hIconDefault;								///< 默认程序图标
@@ -48,8 +49,8 @@ namespace HiEasyX
 	static POINT					g_pPrePos;									///< 创建窗口前的预设窗口位置
 	static int						g_nPreCmdShow;								///< 创建窗口前的预设显示状态
 
-	//static DrawMode					g_fDrawMode = DM_Normal;					///< 全局绘制模式
-	//static bool						g_bAutoFlush = true;						///< 是否自动刷新双缓冲
+	//static DrawMode					g_fDrawMode = DM_Normal;				///< 全局绘制模式
+	//static bool						g_bAutoFlush = true;					///< 是否自动刷新双缓冲
 
 	static UINT						g_uWM_TASKBARCREATED;						///< 系统任务栏消息代码
 
@@ -152,18 +153,6 @@ namespace HiEasyX
 	//	}
 	//}
 
-	// 将 IMAGE 内容复制到 HDC 上
-	// pImg		原图像
-	// hdc		绘制的 HDC
-	// rct		在 HDC 上的绘制区域
-	static void CopyImageToHDC(IMAGE* pImg, HDC hdc, RECT rct)
-	{
-		//HDC hdc = GetDC(hWnd);
-		HDC hdcImg = GetImageHDC(pImg);
-		BitBlt(hdc, rct.left, rct.top, rct.right, rct.bottom, hdcImg, 0, 0, SRCCOPY);
-		//ReleaseDC(hWnd, hdc);
-	}
-
 	//void WaitForTask(HWND hWnd)
 	//{
 	//	// 未设置句柄时只需要等待，若设置了则需要判断该句柄是否对应活动窗口
@@ -235,6 +224,11 @@ namespace HiEasyX
 
 	void MsgLoopHX()
 	{
+		if (g_bAutoFlush)
+		{
+			FlushAllWindowBuffer(false);
+		}
+
 		MSG msg;
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) // PM_REMOVE: 处理后从消息队列中移除
 		{
@@ -315,6 +309,113 @@ namespace HiEasyX
 		}
 	}
 
+	HDC GetImageHDCHX(IMAGE* img)
+	{
+		if (img)
+		{
+			return GetImageHDC(img);
+		}
+		else if (HasFocusedWindow())
+		{
+			return GetImageHDC(g_vecWindows[g_nFocusWindowIndex].pCanvas);
+		}
+		else
+		{
+			throw std::runtime_error("GetImageHDCHX(nullptr) called, but no working window assigned.");
+		}
+	}
+
+	void SetWorkingImageHX(IMAGE* img)
+	{
+		if (img)
+		{
+			SetWorkingImage(img);
+		}
+		else if (HasFocusedWindow())
+		{
+			SetWorkingImage(g_vecWindows[g_nFocusWindowIndex].pCanvas);
+		}
+		else
+		{
+			//throw std::runtime_error("SetWorkingImageHX(nullptr) called, but no working window assigned.");
+		}
+	}
+
+	void setoriginHX(int x, int y, HWND hwnd)
+	{
+		// 此函数原理参见 OnPaint 函数注释
+
+		int index = GetWindowIndex(hwnd);
+		if (index == NO_WINDOW_INDEX)
+		{
+			return;
+		}
+
+		// EasyX 原生 setorigin 函数的原理可能不是用的 SetViewportOrgEx，总之经测试无法使用
+		//setorigin(x, y);
+
+		// 此处直接采用 GDI 方式实现
+		SetViewportOrgEx(GetImageHDCHX(g_vecWindows[index].pCanvas), x, y, nullptr);
+	}
+
+	void getoriginHX(int* px, int* py, HWND hwnd)
+	{
+		int index = GetWindowIndex(hwnd);
+		if (index == NO_WINDOW_INDEX)
+		{
+			return;
+		}
+		POINT pt;
+		GetViewportOrgEx(GetImageHDCHX(g_vecWindows[index].pCanvas), &pt);
+		if (px)
+		{
+			*px = pt.x;
+		}
+		if (py)
+		{
+			*py = pt.y;
+		}
+	}
+
+	void setaspectratioHX(float xasp, float yasp, HWND hwnd)
+	{
+		// 此函数原理参见 OnPaint 函数注释
+
+		int index = GetWindowIndex(hwnd);
+		if (index == NO_WINDOW_INDEX)
+		{
+			return;
+		}
+
+		// EasyX 原生 setaspectratio 函数的原理是
+		// 1. 此刻调用时，将 IAMGE 画布大小调整为 w_old/xasp * h_old/yasp
+		// 2. 以后 IMAGE::Resize(w, h) 时，实际画布大小被调整为 w/xasp * h/yasp
+		// 3. 绘制时坐标实际上没有变化
+		// 4. 该函数对任意 IMAGE 均有效
+		// 5. EasyX 相应 WM_PAINT 时进行了相应处理，HiEasyX 对应的代码在 OnPaint 函数中
+		setaspectratio(xasp, yasp);
+
+		g_vecWindows[index].xasp = xasp;
+		g_vecWindows[index].yasp = yasp;
+	}
+
+	void getaspectratioHX(float* pxasp, float* pyasp, HWND hwnd)
+	{
+		int index = GetWindowIndex(hwnd);
+		if (index == NO_WINDOW_INDEX)
+		{
+			return;
+		}
+		if (pxasp)
+		{
+			*pxasp = g_vecWindows[index].xasp;
+		}
+		if (pyasp)
+		{
+			*pyasp = g_vecWindows[index].yasp;
+		}
+	}
+
 	/*void BindWindowCanvas(Canvas* pCanvas, HWND hWnd)
 	{
 		int index = GetWindowIndex(hWnd);
@@ -338,9 +439,14 @@ namespace HiEasyX
 				Sleep(100);
 	}*/
 
-	void AutoExit()
+	void AutoExit(bool enable)
 	{
-		g_bAutoExit = true;
+		g_bAutoExit = enable;
+	}
+
+	void SingleGraphWindow(bool enable)
+	{
+		g_bSingleWindow = enable;
 	}
 
 	HWND GetHWndHX()
@@ -370,7 +476,7 @@ namespace HiEasyX
 			//WaitForTask();
 			//WaitForProcessing(index);
 			g_nFocusWindowIndex = index;
-			SetWorkingImage(GetFocusedWindow().pCanvas);
+			SetWorkingImageHX(GetFocusedWindow().pCanvas);
 			return true;
 		}
 		else
@@ -468,6 +574,29 @@ namespace HiEasyX
 				FlushWindowBuffer(wnd.hWnd, bInstant);
 			}
 		}
+	}
+
+	void AutoFlushWindowBuffer(bool enable)
+	{
+		g_bAutoFlush = enable;
+	}
+
+	void BeginBatchDrawHX()
+	{
+		HiEasyX::AutoFlushWindowBuffer(false);
+		HiEasyX::MsgLoopHX();
+	}
+
+	void FlushBatchDrawHX()
+	{
+		HiEasyX::FlushWindowBuffer(false);
+		HiEasyX::MsgLoopHX();
+	}
+
+	void EndBatchDrawHX()
+	{
+		HiEasyX::FlushWindowBuffer(false);
+		HiEasyX::MsgLoopHX();
 	}
 
 	// 已弃用
@@ -775,15 +904,18 @@ namespace HiEasyX
 		return {};
 	}
 
+	// 对外阻塞获取消息基函数，其他形式的阻塞消息函数会调用此函数
+	// MsgLoopHX() 只在各个对外消息基函数中进行
 	Optional<ExMessage> getmessageHX(BYTE filter, HWND hWnd)
 	{
+		MsgLoopHX();
 		while (!IsNewMessage(filter, hWnd))
 		{
-			if (!IsWindowExists(hWnd))
+			if (!IsWindowExists(hWnd))	// 等待过程中要留意窗口是否还存在
 			{
 				return {};
 			}
-			SleepHX(10);
+			SleepHX(10);	// 内含消息循环
 		}
 		ExMessage msg = GetNextMessage(filter, hWnd);
 		RemoveMessage(hWnd);
@@ -807,8 +939,10 @@ namespace HiEasyX
 		}
 	}
 
+	// 对外非阻塞获取消息基函数，其他形式的非阻塞消息函数会调用此函数
 	bool peekmessageHX(ExMessage* msg, BYTE filter, bool removemsg, HWND hWnd)
 	{
+		MsgLoopHX();
 		if (IsNewMessage(filter, hWnd))
 		{
 			if (msg)		*msg = GetNextMessage(filter, hWnd);
@@ -818,13 +952,17 @@ namespace HiEasyX
 		return false;
 	}
 
+	// 对外清除消息基函数，其他形式的清理消息函数会调用此函数
 	void flushmessageHX(BYTE filter, HWND hWnd)
 	{
+		MsgLoopHX();
 		ClearMessage(filter, hWnd);
 	}
 
+	// MouseMsg 特有的对外判断新消息基函数
 	bool MouseHitHX(HWND hWnd)
 	{
+		MsgLoopHX();
 		return IsNewMessage(EM_MOUSE, hWnd);
 	}
 
@@ -851,7 +989,7 @@ namespace HiEasyX
 
 	void FlushMouseMsgBufferHX(HWND hWnd)
 	{
-		ClearMessage(EM_MOUSE, hWnd);
+		flushmessageHX(EM_MOUSE, hWnd);
 	}
 
 	ExMessage To_ExMessage(MOUSEMSG msg)
@@ -1169,6 +1307,7 @@ namespace HiEasyX
 			g_vecWindows[indexWnd].vecMessage.push_back(msgKey);
 
 			// 给控制台发一份，以支持 _getch() 系列函数
+			// 但是如果用户真的用了 _getch()，则会导致窗口消息阻塞，窗口卡死……故不建议用
 			PostMessage(GetConsoleWindow(), msg, wParam, lParam);
 		}
 		break;
@@ -1222,7 +1361,54 @@ namespace HiEasyX
 		// 将绘图内容输出到窗口 HDC
 		RECT rctWnd;
 		GetClientRect(g_vecWindows[indexWnd].hWnd, &rctWnd);
-		CopyImageToHDC(g_vecWindows[indexWnd].pCanvas, hdc, rctWnd);
+		//CopyImageToHDC(g_vecWindows[indexWnd].pCanvas, hdc, rctWnd);
+
+		// 获取窗口画布的绘制原点，以呼应 setoriginHX
+		HDC hdcCanvas = GetImageHDCHX(g_vecWindows[indexWnd].pCanvas);
+		POINT ptCanvasOrg;
+		GetViewportOrgEx(hdcCanvas, &ptCanvasOrg);
+
+		if (g_vecWindows[indexWnd].xasp != 1 || g_vecWindows[indexWnd].yasp != 1)
+		{
+			if (fabs(g_vecWindows[indexWnd].xasp) > 1e-4 && fabs(g_vecWindows[indexWnd].yasp) > 1e-4)
+			{
+				StretchBlt(
+					hdc,	/* 目标设备 */
+					rctWnd.left, rctWnd.top, rctWnd.right, rctWnd.bottom, /* 目标绘制区域 */
+					hdcCanvas, /* 源设备 */
+					(int)(-ptCanvasOrg.x / g_vecWindows[indexWnd].xasp), /* 源拷贝起点 */
+					(int)(-ptCanvasOrg.y / g_vecWindows[indexWnd].yasp),
+					(int)((rctWnd.right - rctWnd.left) / g_vecWindows[indexWnd].xasp),
+					(int)((rctWnd.bottom - rctWnd.top) / g_vecWindows[indexWnd].yasp),
+					SRCCOPY
+				);
+			}
+			/**
+			 * 注解：
+			 *		EasyX setaspectratio 的原理是将画布大小调整为 w_old / xasp 和 h_old / yasp，
+			 *		然后在画布上绘制时，不做任何处理，仅仅按原样绘制，最后在窗口绘制时，
+			 *		将 (w_old / xasp, h_old / yasp) 大小的画布重新压缩回 (w_old, h_old) 大小，
+			 *		这样最后看起来的效果就是 x 方向的绘制内容都乘以了 xasp 比例，y 方向的绘制内容都乘以了 yasp 比例。
+			 *
+			 *		EasyX 原生的 setaspectratio 函数对所有 IMAGE 均有效，效果即是调整画布大小为已设置的 (1/xasp, 1/yasp) 倍。
+			 *		这样可以让绘制内容不越界。例如，xasp = 0.5 时，用户可以在更广阔的坐标上绘制内容，所以画布需要调大。
+			*/
+		}
+		else
+		{
+			BitBlt(hdc,	/* 目标设备 */
+				rctWnd.left, rctWnd.top, rctWnd.right, rctWnd.bottom, /* 目标绘制区域 */
+				hdcCanvas, /* 源设备 */
+				-ptCanvasOrg.x, -ptCanvasOrg.y, /* 源拷贝起点 */
+				SRCCOPY);
+			/**
+			 * 注解：
+			 *		在 setoriginHX 中调用了 SetViewportOrgEx 函数设置画布的绘制原点，
+			 *		此后画布大小没变，但是传入的绘制坐标都会基于这个原点进行偏移，
+			 *		此处 BitBlt 在指定源绘制起点时，坐标也会受到此偏移的影响，
+			 *		因此要获取源画布的原点坐标，然后乘以 -1 再作为参数传入。
+			*/
+		}
 	}
 
 	static void OnMove(HWND hWnd)
@@ -1493,7 +1679,10 @@ namespace HiEasyX
 				OnPaint(indexWnd, hdc);
 				EndPaint(hWnd, &ps);
 
-				DefWindowProc(hWnd, WM_PAINT, 0, 0);
+				// 无需
+				//DefWindowProc(hWnd, WM_PAINT, 0, 0);
+
+				//printf("\twm_paint\n");
 			}
 
 			return resultProc;
@@ -1538,6 +1727,8 @@ namespace HiEasyX
 		wnd.hWnd = nullptr;
 		wnd.hParent = hParent;
 		wnd.pCanvas = new Canvas(w, h);
+		wnd.xasp = 1;
+		wnd.yasp = 1;
 		//wnd.pBufferImg = new IMAGE(w, h);
 		//wnd.pBufferImgCanvas = nullptr;
 		//wnd.isNeedFlush = false;
@@ -1594,10 +1785,10 @@ namespace HiEasyX
 		if (lstrlen(lpszWndTitle) == 0)
 		{
 			strTitle = HXStr("EasyX_") + (HXString)GetEasyXVer() + HXStr(" HiEasyX (") + _HIEASYX_VER_STR_ + HXStr(")");
-			if (nWndCount != 0)
-			{
-				strTitle += HXStr(" ( WindowID: ") + ToHXString(nWndCount) + HXStr(" )");
-			}
+			//if (nWndCount != 0)
+			//{
+			//	strTitle += HXStr(" ( WindowID: ") + ToHXString(nWndCount) + HXStr(" )");
+			//}
 		}
 		else
 		{
@@ -1654,7 +1845,7 @@ namespace HiEasyX
 		}
 		else
 		{
-			close_console();
+			hide_console();
 		}
 
 		// 用户在创建窗口时设置的窗口属性
@@ -1728,9 +1919,6 @@ namespace HiEasyX
 			RemoveMenu(hmenu, SC_CLOSE, MF_BYCOMMAND);
 		}
 
-		// 新的窗口会自动获得工作焦点
-		SetWorkingWindow(wnd.hWnd);
-
 		// 窗口创建完毕
 		nWndCount++;
 
@@ -1802,6 +1990,22 @@ namespace HiEasyX
 
 		hWnd = CreateWindowInternal(w, h, flag, lpszWndTitle, WindowProcess, hParent);
 
+		// 单窗口模式
+		// 不能在 CreateWindowInternal 之前直接 closeallgraph，那样会触发 AutoExit（如果启用的话）
+		if (g_bSingleWindow)
+		{
+			for (const auto& wnd : g_vecWindows)
+			{
+				if (wnd.isWindowAlive && wnd.hWnd != hWnd)
+				{
+					DestroyWindow(wnd.hWnd);
+				}
+			}
+		}
+
+		// 新的窗口会自动获得工作焦点
+		SetWorkingWindow(hWnd);
+
 		//if (!hWnd)
 		//{
 		//	if (hParent)						// 创建子窗口失败，则使父窗口恢复正常
@@ -1828,6 +2032,19 @@ namespace HiEasyX
 		//}
 
 		return hWnd;
+	}
+
+	HWND initgraphCompatible(int w, int h, int flag)
+	{
+		// Compatible Settings
+		AutoExit(true);
+		AutoFlushWindowBuffer(true);
+		SingleGraphWindow(true);
+
+		HWND wnd = initgraphHX(w, h, flag);
+		EnableResizing(GetHWndHX(), false);
+
+		return wnd;
 	}
 
 	bool init_console()
@@ -1940,6 +2157,26 @@ namespace HiEasyX
 	Canvas* Window::GetCanvas() const
 	{
 		return g_vecWindows[m_nWindowIndex].pCanvas;
+	}
+
+	void Window::SetOrigin(int x, int y) const
+	{
+		setoriginHX(x, y, GetHandle());
+	}
+
+	void Window::GetOrigin(int* x, int* y) const
+	{
+		getoriginHX(x, y, GetHandle());
+	}
+
+	void Window::SetAspectRatio(float xasp, float yasp) const
+	{
+		setaspectratioHX(xasp, yasp, GetHandle());
+	}
+
+	void Window::GetAspectRatio(float* xasp, float* yasp) const
+	{
+		getaspectratioHX(xasp, yasp, GetHandle());
 	}
 
 	/*void Window::BindCanvas(Canvas* pCanvas)

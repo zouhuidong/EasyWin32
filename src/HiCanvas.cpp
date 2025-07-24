@@ -1,8 +1,8 @@
-#include "HiCanvas.h"
+#include <HiEasyX/HiCanvas.h>
 
-#include "HiMacro.h"
-#include "HiWindow.h"
-#include "HiGdiplus.h"
+#include <HiEasyX/HiMacro.h>
+#include <HiEasyX/HiWindow.h>
+#include <HiEasyX/HiGdiplus.h>
 
 #include <stdexcept>
 
@@ -225,8 +225,8 @@ namespace HiEasyX
 
 		IMAGE img(width, height);
 		StretchBlt(
-			GetImageHDC(&img), 0, 0, width, height,
-			GetImageHDC(srcimg), 0, 0,
+			GetImageHDCHX(&img), 0, 0, width, height,
+			GetImageHDCHX(srcimg), 0, 0,
 			w, h, SRCCOPY
 		);
 		return img;
@@ -280,12 +280,12 @@ namespace HiEasyX
 		if (GetWorkingImage() != p)
 		{
 			m_property.SaveWorkingImageOnly();
-			SetWorkingImage(p);
+			SetWorkingImageHX(p);
 		}
 		return BeginWindowTask();*/
 
 		m_pImgPrevious = GetWorkingImage();
-		SetWorkingImage(this);
+		SetWorkingImageHX(this);
 		return true;
 	}
 
@@ -302,7 +302,7 @@ namespace HiEasyX
 			EndWindowTask();
 		}*/
 
-		SetWorkingImage(m_pImgPrevious);
+		SetWorkingImageHX(m_pImgPrevious);
 	}
 
 	Canvas::Canvas()
@@ -395,6 +395,7 @@ namespace HiEasyX
 
 		IMAGE::Resize(w, h);
 		m_pBuf = GetImageBufferHX(this);
+		m_hdc = GetImageHDCHX(this);
 	}
 
 	/*Canvas& Canvas::BindToImage(IMAGE* pImg)

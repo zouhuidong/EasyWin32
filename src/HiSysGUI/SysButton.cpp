@@ -1,6 +1,6 @@
-#include "HiSysGUI/SysButton.h"
-#include "HiMiscUtils.h"
-#include "HiGraphicsUtils.h"
+#include <HiEasyX/HiSysGUI/SysButton.h>
+#include <HiEasyX/HiMiscUtils.h>
+#include <HiEasyX/HiGraphicsUtils.h>
 #include <tchar.h>
 
 namespace HiEasyX

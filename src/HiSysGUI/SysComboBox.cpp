@@ -1,4 +1,4 @@
-#include "HiSysGUI/SysComboBox.h"
+#include <HiEasyX/HiSysGUI/SysComboBox.h>
 #include <tchar.h>
 
 namespace HiEasyX
