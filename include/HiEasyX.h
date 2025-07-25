@@ -59,9 +59,17 @@ namespace hiex = HiEasyX;
 
 #ifndef HIEASYX_LIB_EXPORT
 #ifdef _UNICODE
-#pragma comment(lib, "HiEasyXw.lib")
+	#ifdef _DEBUG
+		#pragma comment(lib, "HiEasyXwd.lib")
+	#else
+		#pragma comment(lib, "HiEasyXw.lib")
+	#endif
 #else
-#pragma comment(lib, "HiEasyXa.lib")
+	#ifdef _DEBUG
+		#pragma comment(lib, "HiEasyXad.lib")
+	#else
+		#pragma comment(lib, "HiEasyXa.lib")
+	#endif
 #endif
 #endif
 

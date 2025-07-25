@@ -13,8 +13,8 @@ endif()
 
 # 定义输出路径模板（架构 -> 配置 -> 字符集）
 set(OUTPUT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/output)
-set(LIB_OUTPUT_DIR ${OUTPUT_BASE_DIR}/lib/$<CONFIG>/${PLATFORM_ARCH})
-set(BIN_OUTPUT_DIR ${OUTPUT_BASE_DIR}/bin/$<CONFIG>/${PLATFORM_ARCH})
+set(LIB_OUTPUT_DIR ${OUTPUT_BASE_DIR}/lib/${PLATFORM_ARCH})
+set(BIN_OUTPUT_DIR ${OUTPUT_BASE_DIR}/bin/$<CONFIG>/${PLATFORM_ARCH}) # config 指的是 x86, x64 等
 
 
 # 根 include 目录下的头文件
@@ -105,6 +105,9 @@ add_library(HiEasyXw STATIC
 target_compile_definitions(HiEasyXw PRIVATE HIEASYX_LIB_EXPORT UNICODE _UNICODE)
 set_target_properties(HiEasyXw PROPERTIES 
     ARCHIVE_OUTPUT_DIRECTORY "${LIB_OUTPUT_DIR}"
+	ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${LIB_OUTPUT_DIR}"    # 显式指定 Debug/Release 输出目录，让 Debug/Release 的放一起
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${LIB_OUTPUT_DIR}"
+	DEBUG_POSTFIX "d"
 )
 target_include_directories(HiEasyXw PUBLIC include)
 
@@ -117,6 +120,9 @@ add_library(HiEasyXa STATIC
 target_compile_definitions(HiEasyXa PRIVATE HIEASYX_LIB_EXPORT _MBCS)
 set_target_properties(HiEasyXa PROPERTIES 
     ARCHIVE_OUTPUT_DIRECTORY "${LIB_OUTPUT_DIR}"
+	ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${LIB_OUTPUT_DIR}"    # 显式指定 Debug/Release 输出目录，让 Debug/Release 的放一起
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${LIB_OUTPUT_DIR}"
+	DEBUG_POSTFIX "d"
 )
 target_include_directories(HiEasyXa PUBLIC include)
 
@@ -129,6 +135,7 @@ macro(add_example example_name source_file)
     target_compile_definitions(${example_name}_w PRIVATE UNICODE _UNICODE)
     set_target_properties(${example_name}_w PROPERTIES 
         RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_DIR}"
+        DEBUG_POSTFIX "d"
     )
     
     # 多字节版本
@@ -137,6 +144,7 @@ macro(add_example example_name source_file)
     target_compile_definitions(${example_name}_a PRIVATE _MBCS)
     set_target_properties(${example_name}_a PROPERTIES 
         RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_DIR}"
+        DEBUG_POSTFIX "d"
     )
 endmacro()
 
