@@ -19,11 +19,11 @@ namespace HiEasyX
 	}
 
 
-	SysCheckBox::SysCheckBox(HWND hParent, RECT rct, HXString strText)
+	SysCheckBox::SysCheckBox(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
-	SysCheckBox::SysCheckBox(HWND hParent, int x, int y, int w, int h, HXString strText)
+	SysCheckBox::SysCheckBox(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}

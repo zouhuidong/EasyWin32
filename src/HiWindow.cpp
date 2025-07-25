@@ -20,6 +20,62 @@ using StdClock = std::chrono::high_resolution_clock;
 
 namespace HiEasyX
 {
+	////////////****** 类型定义 ******////////////
+
+	/**
+	 * @brief	窗口
+	 * @note	在 InitWindowStruct 函数中初始化此结构体
+	*/
+	struct EasyWindow
+	{
+		bool isWindowAlive;							///< 窗口是否存在
+
+		HWND hWnd;									///< 窗口句柄
+		HWND hParent;								///< 父窗口句柄
+
+		/**
+		 * @note <pre>
+		 *		需要为窗口保留一个 IMAGE 对象（在此直接使用 Canvas）用于存储绘制内容，原因如下：
+		 *		1. 若用户按 EasyX 逻辑编写代码，不处理 WM_PAINT 消息，则窗口需要重绘时，需从此处的 IMAGE 中读取
+		 *		2. 若不加上该图像，则只能直接绘制到窗口 HDC，那样需要强制修改 IMAGE 对象的绘制目标，若非不得已，还是罢了
+		 * </pre>
+		*/
+		Canvas* pCanvas;							///< 窗口图像
+		float xasp;									///< 刷新窗口缓冲时使用的缩放比例（x 轴）
+		float yasp;									///< 刷新窗口缓冲时使用的缩放比例（y 轴）
+
+		// 已弃用，直接使用 pCanvas
+		//IMAGE* pImg;								///< 窗口图像
+		//bool isNeedFlush;							///< 是否需要输出绘图缓冲
+
+		WNDPROC funcWndProc;						///< 窗口消息处理函数
+
+		std::vector<ExMessage> vecMessage;			///< 模拟 EasyX 窗口消息队列
+
+		bool isUseTray;								///< 是否使用托盘
+		NOTIFYICONDATA nid;							///< 托盘信息
+		bool isUseTrayMenu;							///< 是否使用托盘菜单
+		HMENU hTrayMenu;							///< 托盘菜单
+
+		/**
+		 * @brief <pre>
+		 *		托盘菜单消息处理函数指针
+		 *
+		 * 备注：
+		 *		给出此函数是为了方便响应托盘的菜单消息
+		 *		如需响应完整的托盘消息，请自定义窗口过程函数并处理 WM_TRAY 消息
+		 * </pre>
+		*/
+		void(*funcTrayMenuProc)(UINT);
+
+		bool isNewSize;								///< 窗口大小是否改变
+		//bool isBusyProcessing;						///< 是否正忙于处理内部消息（指不允许用户启动任务的情况）
+
+		std::vector<SysControlBase*> vecSysCtrl;	///< 记录创建的系统控件
+		bool bHasCtrl = false;						///< 是否创建过系统控件
+	};
+
+
 	////////////****** 全局变量 ******////////////
 
 	static WNDCLASSEX				g_WndClassEx;								///< 窗口类
@@ -454,11 +510,6 @@ namespace HiEasyX
 		return HasFocusedWindow() ? GetFocusedWindow().hWnd : nullptr;
 	}
 
-	EasyWindow GetWorkingWindow()
-	{
-		return GetFocusedWindow();
-	}
-
 	bool SetWorkingWindow(HWND hWnd)
 	{
 		//if (!hWnd || GetFocusedWindow().hWnd == hWnd)
@@ -589,13 +640,13 @@ namespace HiEasyX
 
 	void FlushBatchDrawHX()
 	{
-		HiEasyX::FlushWindowBuffer(false);
+		HiEasyX::FlushAllWindowBuffer(false);
 		HiEasyX::MsgLoopHX();
 	}
 
 	void EndBatchDrawHX()
 	{
-		HiEasyX::FlushWindowBuffer(false);
+		HiEasyX::FlushAllWindowBuffer(false);
 		HiEasyX::MsgLoopHX();
 	}
 
@@ -2139,12 +2190,7 @@ namespace HiEasyX
 		}
 	}
 
-	EasyWindow Window::GetInfo() const
-	{
-		return g_vecWindows[m_nWindowIndex];
-	}
-
-	bool Window::IsAlive()
+	bool Window::Exist()
 	{
 		return IsWindowExists(m_nWindowIndex);
 	}

@@ -26,8 +26,8 @@ namespace HiEasyX
 		SysStatic();
 
 
-		SysStatic(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		SysStatic(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		SysStatic(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		SysStatic(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 
 		/**

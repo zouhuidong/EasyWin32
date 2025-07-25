@@ -8,12 +8,15 @@
 #pragma once
 
 #include <string>
+#include <tchar.h>
 #include <windows.h>
 
 namespace HiEasyX
 {
 #ifdef UNICODE
 
+	///< HiEasyX 内部使用字符串类型，用于适配不同的字符集设置
+	///< 由于使用了 std，因此该类型不会暴露在二进制接口中
 	using HXString = std::wstring;
 	using HXChar = wchar_t;
 #define HXStr(Text) L##Text

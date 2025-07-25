@@ -539,6 +539,18 @@ namespace HiEasyX
 		 * @param[in] x					图像输入位置
 		 * @param[in] y					图像输入位置
 		 * @param[in] pImg				待输入图像
+		*/
+		void PutImageIn(
+			int x,
+			int y,
+			IMAGE* pImg
+		);
+
+		/**
+		 * @brief 绘制图像到该画布
+		 * @param[in] x					图像输入位置
+		 * @param[in] y					图像输入位置
+		 * @param[in] pImg				待输入图像
 		 * @param[in] crop				裁剪区域
 		 * @param[in] alpha				叠加透明度
 		 * @param[in] bUseSrcAlpha		是否使用原图透明度
@@ -548,7 +560,7 @@ namespace HiEasyX
 			int x,
 			int y,
 			IMAGE* pImg,
-			RECT crop = { 0 },
+			Optional<RECT> crop = {},
 			BYTE alpha = 255,
 			bool bUseSrcAlpha = false,
 			bool isCalculated = false
@@ -568,7 +580,7 @@ namespace HiEasyX
 			int x,
 			int y,
 			IMAGE* pImg = nullptr,
-			RECT crop = { 0 },
+			Optional<RECT> crop = {},
 			BYTE alpha = 255,
 			bool bUseSrcAlpha = false,
 			bool isCalculated = false

@@ -21,14 +21,14 @@ namespace HiEasyX
 	}
 
 
-	SysButton::SysButton(HWND hParent, RECT rct, HXString strText)
+	SysButton::SysButton(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
 
 
 
-	SysButton::SysButton(HWND hParent, int x, int y, int w, int h, HXString strText)
+	SysButton::SysButton(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}

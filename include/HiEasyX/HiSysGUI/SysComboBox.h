@@ -22,8 +22,8 @@ namespace HiEasyX
 		bool m_bSelChanged = false;
 		bool m_bEdited = false;
 
-		void (*m_pFuncSel)(int sel, HXString strSelText) = nullptr;
-		void (*m_pFuncEdit)(HXString strText) = nullptr;
+		void (*m_pFuncSel)(int sel, LPCTSTR strSelText) = nullptr;
+		void (*m_pFuncEdit)(LPCTSTR strText) = nullptr;
 
 
 		/**
@@ -51,8 +51,8 @@ namespace HiEasyX
 		SysComboBox();
 
 
-		SysComboBox(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		SysComboBox(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		SysComboBox(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		SysComboBox(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 
 		/**
@@ -67,7 +67,7 @@ namespace HiEasyX
 		 * @param[in] pFunc 消息响应函数
 		*/
 
-		void RegisterSelMessage(void (*pFunc)(int sel, HXString strSelText));
+		void RegisterSelMessage(void (*pFunc)(int sel, LPCTSTR strSelText));
 
 
 		/**
@@ -75,7 +75,7 @@ namespace HiEasyX
 		 * @param[in] pFunc 消息响应函数
 		*/
 
-		void RegisterEditMessage(void (*pFunc)(HXString strText));
+		void RegisterEditMessage(void (*pFunc)(LPCTSTR strText));
 
 
 		/**
@@ -95,7 +95,7 @@ namespace HiEasyX
 		 * @return 是否选择成功
 		*/
 
-		bool SelectString(HXString strText);
+		bool SelectString(LPCTSTR strText);
 
 
 		/**
@@ -103,7 +103,7 @@ namespace HiEasyX
 		 * @param[in] strText 项文本
 		*/
 
-		void AddString(HXString strText);
+		void AddString(LPCTSTR strText);
 
 
 		/**
@@ -112,7 +112,7 @@ namespace HiEasyX
 		 * @param[in] strText	项文本
 		*/
 
-		void InsertString(int index, HXString strText);
+		void InsertString(int index, LPCTSTR strText);
 
 
 		/**

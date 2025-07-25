@@ -24,11 +24,11 @@ namespace HiEasyX
 	}
 
 
-	SysEdit::SysEdit(HWND hParent, RECT rct, HXString strText)
+	SysEdit::SysEdit(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
-	SysEdit::SysEdit(HWND hParent, int x, int y, int w, int h, HXString strText)
+	SysEdit::SysEdit(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}
@@ -64,7 +64,13 @@ namespace HiEasyX
 				case EN_UPDATE:
 					m_bEdited = true;
 					if (m_pFunc)
-						m_pFunc(GetText());
+					{
+						TCHAR* buf = new TCHAR[GetTextLength() + 1];
+						memset(buf, 0, (GetTextLength() + 1) * sizeof(TCHAR));
+						GetText(buf, GetTextLength() + 1);
+						m_pFunc(buf);
+						delete[] buf;
+					}
 					break;
 				}
 			}
@@ -89,7 +95,7 @@ namespace HiEasyX
 	}
 
 
-	void SysEdit::RegisterMessage(void(*pFunc)(HXString strText))
+	void SysEdit::RegisterMessage(void(*pFunc)(LPCTSTR strText))
 	{
 		m_pFunc = pFunc;
 	}
@@ -219,9 +225,9 @@ namespace HiEasyX
 	}
 
 
-	void SysEdit::Replace(HXString strText)
+	void SysEdit::Replace(LPCTSTR strText)
 	{
-		SendMessage(GetHandle(), EM_REPLACESEL, true, (LPARAM)strText.c_str());
+		SendMessage(GetHandle(), EM_REPLACESEL, true, (LPARAM)strText);
 	}
 
 

@@ -23,11 +23,11 @@ namespace HiEasyX
 	}
 
 
-	SysGroupBox::SysGroupBox(HWND hParent, RECT rct, HXString strText)
+	SysGroupBox::SysGroupBox(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
-	SysGroupBox::SysGroupBox(HWND hParent, int x, int y, int w, int h, HXString strText)
+	SysGroupBox::SysGroupBox(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}

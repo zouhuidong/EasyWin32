@@ -97,8 +97,8 @@ namespace HiEasyX
 		 * @return 控件窗口句柄
 		*/
 
-		HWND Create(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		HWND Create(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		HWND Create(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		HWND Create(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 
 		/**
@@ -128,14 +128,18 @@ namespace HiEasyX
 		int GetTextLength();
 
 
-		HXString GetText();
-		void SetText(HXString str);
+		/**
+		 * @param[in] pString		接收字符串的缓冲区
+		 * @param[in] nMaxCount		要复制到缓冲区的最大字符数，包括 null 字符
+		*/
+		void GetText(LPTSTR pString, int nMaxCount);
+		void SetText(LPCTSTR str);
 
 
 		HFONT GetFont();
 
 
-		void SetFont(int h, int w = 0, HXString typeface = HXStr(""));
+		void SetFont(int h, int w = 0, LPCTSTR typeface = _T(""));
 
 
 		int GetID();

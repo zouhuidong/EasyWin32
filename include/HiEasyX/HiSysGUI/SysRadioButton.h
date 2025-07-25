@@ -28,8 +28,8 @@ namespace HiEasyX
 		SysRadioButton();
 
 
-		SysRadioButton(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		SysRadioButton(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		SysRadioButton(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		SysRadioButton(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 
 		LRESULT UpdateMessage(UINT msg, WPARAM wParam, LPARAM lParam, bool& bRet) override;

@@ -8,6 +8,8 @@
 
 #include <graphics.h>
 #include <gdiplus.h>
+#include <HiEasyX/HiMiscUtils.h>
+
 
 namespace HiEasyX
 {
@@ -192,7 +194,7 @@ namespace HiEasyX
 	 * @param[in] pSrc				待输出图像指针
 	 * @param[in] wSrc				待输出图像宽
 	 * @param[in] hSrc				待输出图像高
-	 * @param[in] crop				待输出图像裁剪区域（right 或 bottom 为 0 表示不裁剪）
+	 * @param[in] crop				待输出图像裁剪区域（未设置表示不裁剪）
 	 * @param[in] alpha				叠加透明度（透明 0 ~ 255 不透明）
 	 *
 	 * @param[in] bUseSrcAlpha <pre>
@@ -216,7 +218,7 @@ namespace HiEasyX
 		int y,
 		DWORD* pDst, int wDst, int hDst,
 		DWORD* pSrc, int wSrc, int hSrc,
-		RECT crop = { 0 },
+		Optional<RECT> crop = {},
 		BYTE alpha = 255,
 		bool bUseSrcAlpha = false,
 		bool isCalculated = false

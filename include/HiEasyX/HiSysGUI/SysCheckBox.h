@@ -28,8 +28,8 @@ namespace HiEasyX
 		SysCheckBox();
 
 
-		SysCheckBox(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		SysCheckBox(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		SysCheckBox(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		SysCheckBox(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 
 		LRESULT UpdateMessage(UINT msg, WPARAM wParam, LPARAM lParam, bool& bRet) override;

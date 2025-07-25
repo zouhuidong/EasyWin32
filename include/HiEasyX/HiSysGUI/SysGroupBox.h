@@ -32,8 +32,8 @@ namespace HiEasyX
 		SysGroupBox();
 
 
-		SysGroupBox(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		SysGroupBox(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		SysGroupBox(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		SysGroupBox(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 	};
 }

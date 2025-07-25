@@ -22,11 +22,11 @@ namespace HiEasyX
 	}
 
 
-	HiEasyX::SysStatic::SysStatic(HWND hParent, RECT rct, HXString strText)
+	HiEasyX::SysStatic::SysStatic(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
-	HiEasyX::SysStatic::SysStatic(HWND hParent, int x, int y, int w, int h, HXString strText)
+	HiEasyX::SysStatic::SysStatic(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}

@@ -19,11 +19,11 @@ namespace HiEasyX
 	}
 
 
-	SysRadioButton::SysRadioButton(HWND hParent, RECT rct, HXString strText)
+	SysRadioButton::SysRadioButton(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
-	SysRadioButton::SysRadioButton(HWND hParent, int x, int y, int w, int h, HXString strText)
+	SysRadioButton::SysRadioButton(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}

@@ -28,11 +28,11 @@ namespace HiEasyX
 	}
 
 
-	SysComboBox::SysComboBox(HWND hParent, RECT rct, HXString strText)
+	SysComboBox::SysComboBox(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		Create(hParent, rct, strText);
 	}
-	SysComboBox::SysComboBox(HWND hParent, int x, int y, int w, int h, HXString strText)
+	SysComboBox::SysComboBox(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		Create(hParent, x, y, w, h, strText);
 	}
@@ -88,9 +88,16 @@ namespace HiEasyX
 					break;
 
 				case CBN_EDITUPDATE:
+
 					m_bEdited = true;
 					if (m_pFuncEdit)
-						m_pFuncEdit(GetText());
+					{
+						TCHAR* buf = new TCHAR[GetTextLength() + 1];
+						memset(buf, 0, (GetTextLength() + 1) * sizeof(TCHAR));
+						GetText(buf, GetTextLength() + 1);
+						m_pFuncEdit(buf);
+						delete[] buf;
+					}
 					break;
 				}
 			}
@@ -101,16 +108,16 @@ namespace HiEasyX
 	}
 
 
-	void SysComboBox::RegisterSelMessage(void(*pFunc)(int sel, HXString strSelText))
+	void SysComboBox::RegisterSelMessage(void(*pFunc)(int sel, LPCTSTR strSelText))
 	{
 		m_pFuncSel = pFunc;
 	}
-	void SysComboBox::RegisterEditMessage(void(*pFunc)(HXString strText))
+	void SysComboBox::RegisterEditMessage(void(*pFunc)(LPCTSTR strText))
 	{
 		m_pFuncEdit = pFunc;
 	}
 
-	
+
 	void SysComboBox::SetSel(int sel)
 	{
 		m_nSel = sel;
@@ -118,17 +125,17 @@ namespace HiEasyX
 	}
 
 
-	bool SysComboBox::SelectString(HXString strText)
+	bool SysComboBox::SelectString(LPCTSTR strText)
 	{
-		return ComboBox_SelectString(GetHandle(), -1, strText.c_str()) != CB_ERR;
+		return ComboBox_SelectString(GetHandle(), -1, strText) != CB_ERR;
 	}
-	void SysComboBox::AddString(HXString strText)
+	void SysComboBox::AddString(LPCTSTR strText)
 	{
-		ComboBox_AddString(GetHandle(), strText.c_str());
+		ComboBox_AddString(GetHandle(), strText);
 	}
-	void SysComboBox::InsertString(int index, HXString strText)
+	void SysComboBox::InsertString(int index, LPCTSTR strText)
 	{
-		ComboBox_InsertString(GetHandle(), index, strText.c_str());
+		ComboBox_InsertString(GetHandle(), index, strText);
 	}
 
 

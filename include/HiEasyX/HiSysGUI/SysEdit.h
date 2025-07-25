@@ -36,7 +36,7 @@ namespace HiEasyX
 		long m_lBasicStyle = WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_BORDER;
 
 
-		void (*m_pFunc)(HXString strText) = nullptr;
+		void (*m_pFunc)(LPCTSTR strText) = nullptr;
 
 
 		bool m_bEdited = false;
@@ -73,8 +73,8 @@ namespace HiEasyX
 		SysEdit();
 
 
-		SysEdit(HWND hParent, RECT rct, HXString strText = HXStr(""));
-		SysEdit(HWND hParent, int x, int y, int w, int h, HXString strText = HXStr(""));
+		SysEdit(HWND hParent, RECT rct, LPCTSTR strText = _T(""));
+		SysEdit(HWND hParent, int x, int y, int w, int h, LPCTSTR strText = _T(""));
 
 
 		~SysEdit() override;
@@ -91,7 +91,7 @@ namespace HiEasyX
 		 * @param[in] pFunc 消息响应函数
 		*/
 
-		void RegisterMessage(void (*pFunc)(HXString strText));
+		void RegisterMessage(void (*pFunc)(LPCTSTR strText));
 
 
 		/**
@@ -198,7 +198,7 @@ namespace HiEasyX
 		 * @param[in] strText 替换文本
 		*/
 
-		void Replace(HXString strText);
+		void Replace(LPCTSTR strText);
 
 
 		/**

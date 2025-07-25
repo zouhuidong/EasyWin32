@@ -56,7 +56,7 @@ namespace HiEasyX
 	}
 
 
-	HWND SysControlBase::Create(HWND hParent, RECT rct, HXString strText)
+	HWND SysControlBase::Create(HWND hParent, RECT rct, LPCTSTR strText)
 	{
 		if (!GetHandle())
 		{
@@ -66,7 +66,7 @@ namespace HiEasyX
 		}
 		return GetHandle();
 	}
-	HWND SysControlBase::Create(HWND hParent, int x, int y, int w, int h, HXString strText)
+	HWND SysControlBase::Create(HWND hParent, int x, int y, int w, int h, LPCTSTR strText)
 	{
 		if (!GetHandle())
 		{
@@ -125,19 +125,15 @@ namespace HiEasyX
 	}
 
 
-	HXString SysControlBase::GetText()
+	void SysControlBase::GetText(LPTSTR pString, int nMaxCount)
 	{
-		int len = GetTextLength();
-		TCHAR* buf = new TCHAR[len + 1];
-		ZeroMemory(buf, sizeof(TCHAR) * (len + 1));
-		GetWindowText(GetHandle(), buf, len + 1);
-		HXString str = buf;
-		delete[] buf;
-		return str;
+		//ZeroMemory(pString, sizeof(TCHAR) * nMaxCount);
+		GetWindowText(GetHandle(), pString, nMaxCount);
 	}
-	void SysControlBase::SetText(HXString str)
+
+	void SysControlBase::SetText(LPCTSTR str)
 	{
-		SetWindowText(GetHandle(), str.c_str());
+		SetWindowText(GetHandle(), str);
 	}
 
 
@@ -147,7 +143,7 @@ namespace HiEasyX
 	}
 
 
-	void SysControlBase::SetFont(int h, int w, HXString typeface)
+	void SysControlBase::SetFont(int h, int w, LPCTSTR typeface)
 	{
 		if (m_hFont)
 		{
@@ -162,7 +158,7 @@ namespace HiEasyX
 			CLIP_DEFAULT_PRECIS,
 			DEFAULT_QUALITY,
 			DEFAULT_PITCH | FF_MODERN,
-			typeface.c_str()
+			typeface
 			);
 		SendMessage(GetHandle(), WM_SETFONT, (WPARAM)m_hFont, 0);
 		InvalidateRect(GetHandle(), nullptr, true);

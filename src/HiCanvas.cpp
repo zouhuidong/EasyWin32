@@ -35,15 +35,29 @@ namespace HiEasyX
 		}
 	}
 
-	void CopyImage_Alpha(int x, int y, DWORD* pDst, int wDst, int hDst, DWORD* pSrc, int wSrc, int hSrc, RECT crop, BYTE alpha, bool bUseSrcAlpha, bool isCalculated)
+	void CopyImage_Alpha(int x, int y, DWORD* pDst, int wDst, int hDst, DWORD* pSrc, int wSrc, int hSrc, Optional<RECT> crop, BYTE alpha, bool bUseSrcAlpha, bool isCalculated)
 	{
-		// 对待输出图像的裁剪起点或终点无效
-		if (crop.left > wSrc || crop.top > hSrc || crop.right < crop.left || crop.bottom < crop.top)
-			return;
+		RECT rctSrcWhole = RECT{ 0, 0, wSrc, hSrc };
+		if (!crop.isSet)
+		{
+			crop = rctSrcWhole;
+		}
+		else
+		{
+			IntersectRect(&crop.value, &crop.value, &rctSrcWhole);	// 确保裁剪区域在原图范围内
+		}
 
-		// 限制原图宽高
-		int limit_w = ((crop.right && crop.right < wSrc) ? crop.right : wSrc);
-		int limit_h = ((crop.bottom && crop.bottom < hSrc) ? crop.bottom : hSrc);
+		int crop_w = crop.value.right - crop.value.left;	// 裁剪区域宽度
+		int crop_h = crop.value.bottom - crop.value.top;	// 裁剪区域高度
+
+		int availble_w = wDst - x;	// 可用宽度
+		int availble_h = hDst - y;	// 可用高度
+
+		int limit_w = min(crop_w, availble_w);	// 实际可用宽度
+		int limit_h = min(crop_h, availble_h);	// 实际可用高度
+
+		int src_end_x = x + limit_w;
+		int src_end_y = y + limit_h;
 
 		// 标记不使用任何透明通道
 		bool bNoAlpha = false;
@@ -55,16 +69,15 @@ namespace HiEasyX
 
 		// i j -> 原图索引（若输出位置为负，则略过超出范围部分）
 		// nx ny -> 载体图像索引
-		for (int i = (x < 0 ? -x : 0) + crop.left, nx = i + x; i < limit_w && nx < wDst; i++, nx++)
+		for (int j = 0; j < limit_h; j++)
 		{
-			for (int j = (y < 0 ? -y : 0) + crop.top, ny = j + y; j < limit_h && ny < hDst; j++, ny++)
+			int indexSrc = (y + j) * wSrc + x;
+			int indexDst = (crop.value.top + j) * wDst + crop.value.left;
+			for (int i = 0; i < limit_w; i++)
 			{
-				int indexSrc = j * wSrc + i;
-				int indexDst = ny * wDst + nx;
-				if (indexSrc < 0 || indexDst < 0)
-				{
-					continue;
-				}
+				indexSrc++;
+				indexDst++;
+
 				if (bNoAlpha)
 				{
 					pDst[indexDst] = pSrc[indexSrc];
@@ -444,7 +457,7 @@ namespace HiEasyX
 		return true;
 	}
 
-	void Canvas::RenderTo(int x, int y, IMAGE* pImg, RECT crop, BYTE alpha, bool bUseSrcAlpha, bool isCalculated)
+	void Canvas::RenderTo(int x, int y, IMAGE* pImg, Optional<RECT> crop, BYTE alpha, bool bUseSrcAlpha, bool isCalculated)
 	{
 		int w, h;	// 目标输出画布尺寸
 		GetImageSize(pImg, &w, &h);
@@ -1621,11 +1634,20 @@ namespace HiEasyX
 		}
 
 		// 输出图像
-		PutImageIn_Alpha(x, y, &img, { 0 }, alpha, bUseSrcAlpha, isCalculated);
+		PutImageIn_Alpha(x, y, &img, {}, alpha, bUseSrcAlpha, isCalculated);
 		return img;
 	}
 
-	void Canvas::PutImageIn_Alpha(int x, int y, IMAGE* pImg, RECT crop, BYTE alpha, bool bUseSrcAlpha, bool isCalculated)
+	void Canvas::PutImageIn(int x, int y, IMAGE* pImg)
+	{
+		if (BeginDrawing())
+		{
+			putimage(x, y, pImg);
+			EndDrawing();
+		}
+	}
+
+	void Canvas::PutImageIn_Alpha(int x, int y, IMAGE* pImg, Optional<RECT> crop, BYTE alpha, bool bUseSrcAlpha, bool isCalculated)
 	{
 		int w, h;	// 原图像尺寸
 		GetImageSize(pImg, &w, &h);

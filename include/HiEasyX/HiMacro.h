@@ -39,36 +39,6 @@
 #define fillrectangle_RECT(rct)			fillrectangle(rct.left,rct.top,rct.right,rct.bottom);
 #define solidrectangle_RECT(rct)		solidrectangle(rct.left,rct.top,rct.right,rct.bottom);
 
-////// 数学
-
-// 圆周率
-#define PI 3.14159265358979323846
-
-////// 矩形
-
-// 将 RECT 边框扩大 d 像素
-#define EXPAND_RECT(rct, d)				(rct).left		-= d;\
-										(rct).top		-= d;\
-										(rct).right		+= d;\
-										(rct).bottom	+= d
-
-// 将 RECT 边框减小 d 像素
-#define REDUCE_RECT(rct, d)				(rct).left		+= d;\
-										(rct).top		+= d;\
-										(rct).right		-= d;\
-										(rct).bottom	-= d
-
-// 是否包含矩形
-#define IS_INCLUDE_RECT(rctParent, rctChild)	(	(rctChild).left		>= (rctParent).left		\
-												&&	(rctChild).right	<= (rctParent).right	\
-												&&	(rctChild).top		>= (rctParent).top		\
-												&&	(rctChild).bottom	<= (rctParent).bottom	)
-
-// 移动矩形
-#define MOVE_RECT(rct, dx, dy)			(rct).left		+= dx;\
-										(rct).top		+= dy;\
-										(rct).right		+= dx;\
-										(rct).bottom	+= dy
 
 /**
  * @brief 常用色彩扩展
