@@ -16,7 +16,7 @@
 namespace HiEasyX
 {
 	/**
-	 * @brief 画布
+	 * @brief 画布（小写绘图函数内部调用 EasyX 原生函数进行绘制，大写函数则不使用 EasyX 原生函数）
 	*/
 	class Canvas : public IMAGE
 	{
@@ -34,6 +34,8 @@ namespace HiEasyX
 
 		DWORD* m_pBuf = nullptr;			///< 图像内存指针
 		HDC m_hdc = nullptr;				///< 图像内存指针
+		int m_w = 0;
+		int m_h = 0;
 
 		//bool m_bBindToImgPointer;			///< 该画布是否绑定到图像指针
 		//IMAGE* m_pImg;						///< 画布绑定的图像指针（若画布绑定到指针）
@@ -81,6 +83,12 @@ namespace HiEasyX
 		// * @return 此画布
 		//*/
 		//Canvas& BindToWindow(HWND hWnd, IMAGE* pImg);
+
+	private:
+
+		// 由于 EasyX 的 BUG 必须重写此函数
+		// 详见 https://qa.codebus.cn/question/2791
+		void SetDefault() override;
 
 	public:
 
@@ -168,9 +176,6 @@ namespace HiEasyX
 		*/
 		HDC GetHDC() const { return m_hdc; }
 
-		int GetWidth() const { return getwidth(); }
-		int GetHeight() const { return getheight(); }
-
 		// 已弃用
 		///**
 		// * @brief <pre>
@@ -218,132 +223,121 @@ namespace HiEasyX
 		*/
 		bool IsPointInside(int x, int y, int* pIndex = nullptr);
 
-		/**
-		 * @brief <pre>
-		 *		用背景色清空画布
-		 *
-		 *	备注：
-		 *		此函数将忽略背景色的透明度，并直接对画布填入 255 的透明度（即不透明）。
-		 * </pre>
-		*/
-		void Clear(Optional<COLORREF> bkcolor = {});
+		void cleardevice(Optional<COLORREF> bkcolor = {});
 
 		/**
 		 * @brief 用背景色清空画布（区别于 Clear 函数，此函数默认保留背景色中的透明度）
 		*/
-		void Clear_Alpha(Optional<COLORREF> bkcolor = {}, bool ignore_alpha = false);
+		void Clear(Optional<COLORREF> bkcolor = {}, bool ignore_alpha = false);
 
-		LINESTYLE GetLineStyle();
-		void SetLineStyle(LINESTYLE style);
-		void SetLineStyle(int style, int thickness = 1, const DWORD* puserstyle = nullptr, DWORD userstylecount = 0);
-		void SetLineThickness(int thickness);
-		int GetLineThickness();
+		LINESTYLE getlinestyle();
+		void setlinestyle(LINESTYLE style);
+		void setlinestyle(int style, int thickness = 1, const DWORD* puserstyle = nullptr, DWORD userstylecount = 0);
+		void setlinethickness(int thickness);
+		int getlinethickness();
 
-		FILLSTYLE GetFillStyle();
-		void SetFillStyle(FILLSTYLE style);
-		void SetFillStyle(int style, long hatch = 0, IMAGE* ppattern = nullptr);
-		void SetFillStyle(BYTE* ppattern8x8);
+		FILLSTYLE getfillstyle();
+		void setfillstyle(FILLSTYLE style);
+		void setfillstyle(int style, long hatch = 0, IMAGE* ppattern = nullptr);
+		void setfillstyle(BYTE* ppattern8x8);
 
-		int GetRop2();
-		void SetRop2(int mode);
+		int getrop2();
+		void setrop2(int mode);
 
-		int GetPolyFillMode();
-		void SetPolyFillMode(int mode);
+		int getpolyfillmode();
+		void setpolyfillmode(int mode);
 
-		COLORREF GetLineColor();
-		void SetLineColor(COLORREF color);
+		COLORREF getlinecolor();
+		void setlinecolor(COLORREF color);
 
-		COLORREF GetTextColor();
-		void SetTextColor(COLORREF color);
+		COLORREF gettextcolor();
+		void settextcolor(COLORREF color);
 
-		COLORREF GetFillColor();
-		void SetFillColor(COLORREF color);
+		COLORREF getfillcolor();
+		void setfillcolor(COLORREF color);
 
-		COLORREF GetBkColor();
-		void SetBkColor(COLORREF color);
+		COLORREF getbkcolor();
+		void setbkcolor(COLORREF color);
 
-		int GetBkMode();
-		void SetBkMode(int mode);
+		int getbkmode();
+		void setbkmode(int mode);
 
 		/**
 		 * @brief 设置绘图状态为原始状态
 		*/
-		void SetDefault();
+		//void SetDefault();
 
-		COLORREF GetPixel(int x, int y);
-		void PutPixel(int x, int y, COLORREF c);
+		COLORREF getpixel(int x, int y);
+		void putpixel(int x, int y, COLORREF c);
 
 		/**
-		 * @brief  直接操作显存获取点（坐标越界会抛出异常）
-		 * @throws std::out_of_range 当传入越界坐标时抛出
+		 * @brief  直接操作显存获取点（无越界检查）
 		*/
 		COLORREF GetPixel_Direct(int x, int y);
 
 		/**
-		 * @brief 直接操作显存绘制点（坐标越界会抛出异常）
-		 * @throws std::out_of_range 当传入越界坐标时抛出
+		 * @brief 直接操作显存绘制点（无越界检查）
 		*/
 		void PutPixel_Direct(int x, int y, COLORREF c);
 
 		/**
-		 * @brief 直接操作显存绘制带有透明度的点（使用 COLORREF 中的透明度）（坐标越界会抛出异常）
-		 * @throws std::out_of_range 当传入越界坐标时抛出
+		 * @brief 直接操作显存绘制带有透明度的点（使用 COLORREF 中的透明度）（无越界检查）
 		*/
-		void PutPixel_Direct_Alpha(int x, int y, COLORREF c);
+		void PutPixel_Direct_SupAlpha(int x, int y, COLORREF c);
 
-		void Line(int x1, int y1, int x2, int y2, Optional<COLORREF> c = {});
-		void Line(POINT pt1, POINT pt2, Optional<COLORREF> c = {});
+		void line(int x1, int y1, int x2, int y2, Optional<COLORREF> c = {});
+		void line(POINT pt1, POINT pt2, Optional<COLORREF> c = {});
 
-		void Rectangle(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
-		void Rectangle(RECT rct, Optional<COLORREF> c = {});
-		void FillRectangle(int left, int top, int right, int bottom, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void FillRectangle(RECT rct, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void SolidRectangle(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
-		void SolidRectangle(RECT rct, Optional<COLORREF> c = {});
-		void ClearRectangle(int left, int top, int right, int bottom);
-		void ClearRectangle(RECT rct);
+		void rectangle(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
+		void rectangle(RECT rct, Optional<COLORREF> c = {});
+		void fillrectangle(int left, int top, int right, int bottom, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void fillrectangle(RECT rct, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void solidrectangle(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
+		void solidrectangle(RECT rct, Optional<COLORREF> c = {});
+		void clearrectangle(int left, int top, int right, int bottom);
+		void clearrectangle(RECT rct);
 
-		void Circle(int x, int y, int radius, Optional<COLORREF> c = {});
-		void FillCircle(int x, int y, int radius, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void SolidCircle(int x, int y, int radius, Optional<COLORREF> c = {});
-		void ClearCircle(int x, int y, int radius);
+		void circle(int x, int y, int radius, Optional<COLORREF> c = {});
+		void fillcircle(int x, int y, int radius, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void solidcircle(int x, int y, int radius, Optional<COLORREF> c = {});
+		void clearcircle(int x, int y, int radius);
 
-		void Ellipse(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
-		void Ellipse(RECT rct, Optional<COLORREF> c = {});
-		void FillEllipse(int left, int top, int right, int bottom, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void FillEllipse(RECT rct, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void SolidEllipse(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
-		void SolidEllipse(RECT rct, Optional<COLORREF> c = {});
-		void ClearEllipse(int left, int top, int right, int bottom);
-		void ClearEllipse(RECT rct);
+		void ellipse(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
+		void ellipse(RECT rct, Optional<COLORREF> c = {});
+		void fillellipse(int left, int top, int right, int bottom, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void fillellipse(RECT rct, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void solidellipse(int left, int top, int right, int bottom, Optional<COLORREF> c = {});
+		void solidellipse(RECT rct, Optional<COLORREF> c = {});
+		void clearellipse(int left, int top, int right, int bottom);
+		void clearellipse(RECT rct);
 
-		void RoundRect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
-		void RoundRect(RECT rct, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
-		void FillRoundRect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void FillRoundRect(RECT rct, int ellipsewidth, int ellipseheight, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void SolidRoundRect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
-		void SolidRoundRect(RECT rct, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
-		void ClearRoundRect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight);
-		void ClearRoundRect(RECT rct, int ellipsewidth, int ellipseheight);
+		void roundrect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
+		void roundrect(RECT rct, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
+		void fillroundrect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void fillroundrect(RECT rct, int ellipsewidth, int ellipseheight, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void solidroundrect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
+		void solidroundrect(RECT rct, int ellipsewidth, int ellipseheight, Optional<COLORREF> c = {});
+		void clearroundrect(int left, int top, int right, int bottom, int ellipsewidth, int ellipseheight);
+		void clearroundrect(RECT rct, int ellipsewidth, int ellipseheight);
 
-		void Arc(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> c = {});
-		void Arc(RECT rct, double stangle, double endangle, Optional<COLORREF> c = {});
-		void Pie(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> c = {});
-		void Pie(RECT rct, double stangle, double endangle, Optional<COLORREF> c = {});
-		void FillPie(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void FillPie(RECT rct, double stangle, double endangle, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void SolidPie(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> c = {});
-		void SolidPie(RECT rct, double stangle, double endangle, Optional<COLORREF> c = {});
-		void ClearPie(int left, int top, int right, int bottom, double stangle, double endangle);
-		void ClearPie(RECT rct, double stangle, double endangle);
+		void arc(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> c = {});
+		void arc(RECT rct, double stangle, double endangle, Optional<COLORREF> c = {});
+		void pie(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> c = {});
+		void pie(RECT rct, double stangle, double endangle, Optional<COLORREF> c = {});
+		void fillpie(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void fillpie(RECT rct, double stangle, double endangle, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void solidpie(int left, int top, int right, int bottom, double stangle, double endangle, Optional<COLORREF> c = {});
+		void solidpie(RECT rct, double stangle, double endangle, Optional<COLORREF> c = {});
+		void clearpie(int left, int top, int right, int bottom, double stangle, double endangle);
+		void clearpie(RECT rct, double stangle, double endangle);
 
-		void Polyline(const POINT* points, int num, Optional<COLORREF> c = {});
-		void Polygon(const POINT* points, int num, Optional<COLORREF> c = {});
-		void FillPolygon(const POINT* points, int num, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
-		void SolidPolygon(const POINT* points, int num, Optional<COLORREF> c = {});
-		void ClearPolygon(const POINT* points, int num);
+		void polyline(const POINT* points, int num, Optional<COLORREF> c = {});
+		void polygon(const POINT* points, int num, Optional<COLORREF> c = {});
+		void fillpolygon(const POINT* points, int num, Optional<COLORREF> cLine = {}, Optional<COLORREF> cFill = {});
+		void solidpolygon(const POINT* points, int num, Optional<COLORREF> c = {});
+		void clearpolygon(const POINT* points, int num);
 
-		void PolyBezier(const POINT* points, int num, Optional<COLORREF> c = {});
+		void polybezier(const POINT* points, int num, Optional<COLORREF> c = {});
 
 		/**
 		 * @brief 填充某区域
@@ -357,23 +351,21 @@ namespace HiEasyX
 		 *		FLOODFILLSURFACE	指定 color 为填充表面颜色，即只填充此颜色
 		 * </pre>
 		 *
-		 * @param[in] isSetColor		是否设置填充颜色
 		 * @param[in] cFill			填充颜色
 		*/
-		void FloodFill(int x, int y, COLORREF color, int filltype = FLOODFILLBORDER, Optional<COLORREF> cFill = {});
+		void floodfill(int x, int y, COLORREF color, int filltype = FLOODFILLBORDER, Optional<COLORREF> cFill = {});
 
 		/**
 		 * @brief 在指定位置输出文本
 		 * @param[in] x				位置
 		 * @param[in] y				位置
-		 * @param[in] lpszText			文本
-		 * @param[in] isSetColor		是否设置颜色
+		 * @param[in] lpszText		文本
 		 * @param[in] c				文本颜色
 		 * @return 文本像素宽度
 		*/
-		int OutTextXY(int x, int y, LPCTSTR lpszText, Optional<COLORREF> c = {});
+		int outtextxy(int x, int y, LPCTSTR lpszText, Optional<COLORREF> c = {});
 
-		int OutTextXY(int x, int y, TCHAR ch, Optional<COLORREF> c = {});
+		int outtextxy(int x, int y, TCHAR ch, Optional<COLORREF> c = {});
 
 		/**
 		 * @brief 在指定位置输出格式化文本
@@ -384,20 +376,20 @@ namespace HiEasyX
 		 * @param[in]				不定参数
 		 * @return 文本像素宽度
 		*/
-		int OutTextXY_Format(int x, int y, int _Size, LPCTSTR _Format, ...);
+		int outtextxy_format(int x, int y, int _Size, LPCTSTR _Format, ...);
 
 		/**
 		 * @brief 获取文本像素宽度
 		 * @param[in] lpszText 文本
 		 * @return 获取文本像素宽度
 		*/
-		int TextWidth(LPCTSTR lpszText);
+		int textwidth(LPCTSTR lpszText);
 
-		int TextWidth(TCHAR c);
-		int TextHeight(LPCTSTR lpszText);
-		int TextHeight(TCHAR c);
-		int Draw_Text(LPCTSTR str, RECT* pRect, UINT uFormat, Optional<COLORREF> c = {});
-		int Draw_Text(TCHAR ch, RECT* pRect, UINT uFormat, Optional<COLORREF> c = {});
+		int textwidth(TCHAR c);
+		int textheight(LPCTSTR lpszText);
+		int textheight(TCHAR c);
+		int drawtext(LPCTSTR str, RECT* pRect, UINT uFormat, Optional<COLORREF> c = {});
+		int drawtext(TCHAR ch, RECT* pRect, UINT uFormat, Optional<COLORREF> c = {});
 
 		/**
 		 * @brief 在某区域居中输出文字
@@ -406,7 +398,7 @@ namespace HiEasyX
 		 * @param[in] isSetColor		是否设置颜色
 		 * @param[in] c					文本颜色
 		*/
-		void CenterText(LPCTSTR lpszText, Optional<RECT> rct = {}, Optional<COLORREF> c = {});
+		void centertext(LPCTSTR lpszText, Optional<RECT> rct = {}, Optional<COLORREF> c = {});
 
 		/**
 		 * @brief 居中输出格式化文本
@@ -414,85 +406,85 @@ namespace HiEasyX
 		 * @param[in] _Format		格式化字符串
 		 * @param[in]				不定参数
 		*/
-		void CenterText_Format(int _Size, LPCTSTR _Format, ...);
+		void centertext_format(int _Size, LPCTSTR _Format, ...);
 
-		LOGFONT GetTextStyle();
-		void SetTextStyle(int nHeight, int nWidth, LPCTSTR lpszFace);
-		void SetTextStyle(int nHeight, int nWidth, LPCTSTR lpszFace, int nEscapement, int nOrientation, int nWeight, bool bItalic, bool bUnderline, bool bStrikeOut);
-		void SetTextStyle(int nHeight, int nWidth, LPCTSTR lpszFace, int nEscapement, int nOrientation, int nWeight, bool bItalic, bool bUnderline, bool bStrikeOut, BYTE fbCharSet, BYTE fbOutPrecision, BYTE fbClipPrecision, BYTE fbQuality, BYTE fbPitchAndFamily);
-		void SetTextStyle(LOGFONT font);
+		LOGFONT gettextstyle();
+		void settextstyle(int nHeight, int nWidth, LPCTSTR lpszFace);
+		void settextstyle(int nHeight, int nWidth, LPCTSTR lpszFace, int nEscapement, int nOrientation, int nWeight, bool bItalic, bool bUnderline, bool bStrikeOut);
+		void settextstyle(int nHeight, int nWidth, LPCTSTR lpszFace, int nEscapement, int nOrientation, int nWeight, bool bItalic, bool bUnderline, bool bStrikeOut, BYTE fbCharSet, BYTE fbOutPrecision, BYTE fbClipPrecision, BYTE fbQuality, BYTE fbPitchAndFamily);
+		void settextstyle(LOGFONT font);
 
 		/**
 		 * @brief 设置字体大小
 		 * @param[in] nHeight	高度
 		 * @param[in] nWidth	宽度（为 0 时，自动与高度匹配）
 		*/
-		void SetFont(int nHeight, int nWidth = 0);
+		void setfont(int nHeight, int nWidth = 0);
 
 		/**
 		 * @brief 设置使用字体的名称
 		 * @param[in] lpsz 字体名称
 		*/
-		void SetTypeface(LPCTSTR lpsz);
+		void settypeface(LPCTSTR lpsz);
 
 		/**
 		 * @brief 设置字符串的书写角度（单位 0.1 度）
 		 * @param[in] lfEscapement 角度
 		*/
-		void SetTextEscapement(LONG lfEscapement);
+		void settextescapement(LONG lfEscapement);
 
 		/**
 		 * @brief 设置每个字符的书写角度（单位 0.1 度）
 		 * @param[in] lfOrientation 角度
 		*/
-		void SetTextOrientation(LONG lfOrientation);
+		void settextorientation(LONG lfOrientation);
 
 		/**
 		 * @brief 设置字符的笔画粗细（范围 默认 0 ~ 1000 最粗）
 		 * @param[in] lfWeight 粗细
 		*/
-		void SetTextWeight(LONG lfWeight);
+		void settextweight(LONG lfWeight);
 
 		/**
 		 * @brief 设置字体是否为斜体
 		 * @param[in] lfItalic 是否使用斜体
 		*/
-		void SetTextItalic(bool lfItalic);
+		void settextitalic(bool lfItalic);
 
 		/**
 		 * @brief 设置字体是否有下划线
 		 * @param[in] lfUnderline 是否使用下划线
 		*/
-		void SetTextUnderline(bool lfUnderline);
+		void settextunderline(bool lfUnderline);
 
 		/**
 		 * @brief 设置字体是否有删除线
 		 * @param[in] lfStrikeOut 是否使用删除线
 		*/
-		void SetTextStrikeOut(bool lfStrikeOut);
+		void settextstrikeout(bool lfStrikeOut);
 
 		/**
 		 * @brief 获取前景色
 		*/
-		COLORREF GetColor();
+		COLORREF getcolor();
 
 		/**
 		 * @brief 设置前景色
 		 * @param[in] color 前景色
 		*/
-		void SetColor(COLORREF color);
+		void setcolor(COLORREF color);
 
-		int GetX();
-		int GetY();
+		int getx();
+		int gety();
 
-		void MoveTo(int x, int y);
-		void MoveRel(int dx, int dy);
+		void moveto(int x, int y);
+		void moverel(int dx, int dy);
 
-		void LineTo(int x, int y, Optional<COLORREF> c = {});
-		void LineRel(int dx, int dy, Optional<COLORREF> c = {});
+		void lineto(int x, int y, Optional<COLORREF> c = {});
+		void linerel(int dx, int dy, Optional<COLORREF> c = {});
 
-		void OutText(LPCTSTR lpszText, Optional<COLORREF> c = {});
-		void OutText(TCHAR ch, Optional<COLORREF> c = {});
+		void outtext(LPCTSTR lpszText, Optional<COLORREF> c = {});
+		void outtext(TCHAR ch, Optional<COLORREF> c = {});
 
 		/**
 		 * @brief 输出格式化文本
@@ -501,7 +493,10 @@ namespace HiEasyX
 		 * @param[in]				不定参数
 		 * @return 文本像素宽度
 		*/
-		int OutText_Format(int _Size, LPCTSTR _Format, ...);
+		int outtext_format(int _Size, LPCTSTR _Format, ...);
+
+		void loadimage(LPCTSTR pImgFile, int nWidth = 0, int nHeight = 0, bool bResize = false);
+		void loadimage(LPCTSTR pResType, LPCTSTR pResName, int nWidth = 0, int nHeight = 0, bool bResize = false);
 
 		/**
 		 * @brief <pre>
@@ -520,9 +515,8 @@ namespace HiEasyX
 		 * @param[in] alpha				叠加透明度
 		 * @param[in] bUseSrcAlpha		是否使用原图的透明度信息进行混合（仅支持有透明度信息的 png 图像）
 		 * @param[in] isCalculated		原图是否已经混合透明度
-		 * @return 读取到的 IMAGE 对象
 		*/
-		IMAGE Load_Image_Alpha(
+		void LoadImage_SupAlpha(
 			LPCTSTR lpszImgFile,
 			int x = 0,
 			int y = 0,
@@ -534,20 +528,19 @@ namespace HiEasyX
 			bool isCalculated = false
 		);
 
-		/**
-		 * @brief 绘制图像到该画布
-		 * @param[in] x					图像输入位置
-		 * @param[in] y					图像输入位置
-		 * @param[in] pImg				待输入图像
-		*/
-		void PutImageIn(
-			int x,
-			int y,
-			IMAGE* pImg
-		);
+		void saveimage(LPCTSTR pImgFile);
+		void getimage(IMAGE* pDstImg, int srcX, int srcY, int srcWidth, int srcHeight);
+
+		void putimage_in(int dstX, int dstY, const IMAGE* pSrcImg, DWORD dwRop = SRCCOPY);
+
+		///< 可以指定裁剪区域的 putimage 函数
+		void putimage_in(int dstX, int dstY, int dstWidth, int dstHeight, const IMAGE* pSrcImg, int srcX, int srcY, DWORD dwRop = SRCCOPY);
+
+		void putimage_out(IMAGE* pDstImg, int dstX, int dstY, DWORD dwRop = SRCCOPY);
+		void putimage_out(IMAGE* pDstImg, int dstX, int dstY, int dstWidth, int dstHeight, int srcX, int srcY, DWORD dwRop = SRCCOPY);
 
 		/**
-		 * @brief 绘制图像到该画布
+		 * @brief 绘制图像到该画布（支持 Alpha 通道）
 		 * @param[in] x					图像输入位置
 		 * @param[in] y					图像输入位置
 		 * @param[in] pImg				待输入图像
@@ -556,7 +549,7 @@ namespace HiEasyX
 		 * @param[in] bUseSrcAlpha		是否使用原图透明度
 		 * @param[in] isCalculated		原图是否已经混合透明度
 		*/
-		void PutImageIn_Alpha(
+		void PutImageIn_SupAlpha(
 			int x,
 			int y,
 			IMAGE* pImg,
@@ -576,7 +569,7 @@ namespace HiEasyX
 		 * @param[in] bUseSrcAlpha	是否使用此画布透明度
 		 * @param[in] isCalculated	画布像素是否已经透明混合
 		*/
-		void RenderTo(
+		void PutImageOut_SupAlpha(
 			int x,
 			int y,
 			IMAGE* pImg = nullptr,
@@ -585,50 +578,6 @@ namespace HiEasyX
 			bool bUseSrcAlpha = false,
 			bool isCalculated = false
 		);
-
-		/**
-		 * @brief EasyX 原生旋转函数
-		 * @param[in] radian		旋转弧度
-		 * @param[in] bkcolor		填充背景色
-		 * @param[in] autosize		是否自适应旋转图像大小
-		 * @param[in] highquality	高质量
-		*/
-		void RotateImage(double radian, COLORREF bkcolor = BLACK, bool autosize = false, bool highquality = true);
-
-		/**
-		 * @brief 旋转图像（保留 Alpha 信息）
-		 * @param[in] radian	旋转弧度
-		 * @param[in] bkcolor	填充背景色
-		*/
-		void RotateImage_Alpha(double radian, COLORREF bkcolor = BLACK);
-
-		/**
-		 * @brief 缩放图像（粗糙的、即不插值的缩放，保留透明度信息）
-		 * @param[in] nW	目标宽度
-		 * @param[in] nH	目标高度（为 0 则根据宽度按比例缩放）
-		*/
-		void ZoomImage_Rough_Alpha(int nW, int nH = 0);
-
-		/**
-		 * @brief 缩放图像（双线性插值，保留透明度信息）
-		 * @param[in] nW	目标宽度
-		 * @param[in] nH	目标高度（为 0 则根据宽度按比例缩放）
-		*/
-		void ZoomImage_Alpha(int nW, int nH = 0);
-
-		/**
-		 * @brief 缩放图像（基于 Win32 API，比较快，保留透明度信息）
-		 * @param[in] nW	目标宽度
-		 * @param[in] nH	目标高度（为 0 则根据宽度按比例缩放）
-		*/
-		void ZoomImage_StretchBlt_Alpha(int nW, int nH = 0);
-
-		/**
-		 * @brief 缩放图像（基于 Win32 API，比较快，保留透明度信息）
-		 * @param[in] nW	目标宽度
-		 * @param[in] nH	目标高度（为 0 则根据宽度按比例缩放）
-		*/
-		void ZoomImage_AlphaBlend_Alpha(int nW, int nH = 0);
 
 		/////// GDI+ 相关绘图函数 ///////
 

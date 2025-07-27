@@ -1,2 +1,4 @@
 output/
 bin_packages/
+build_vs2022_x64/
+build_vs2022_x86/

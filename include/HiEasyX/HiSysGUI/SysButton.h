@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "SysControlBase.h"
+#include <HiEasyX/HiSysGUI/SysControlBase.h>
 
 #include <graphics.h>
 

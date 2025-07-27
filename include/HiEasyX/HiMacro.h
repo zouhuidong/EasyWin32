@@ -8,7 +8,9 @@
 
 #include <graphics.h>
 
-////// 透明相关
+////////////////////////////////////////////
+//  透明通道相关宏定义
+////////////////////////////////////////////
 
 // 显存 DWORD 中的颜色存储方式：ARGB
 // EasyX 绘图函数使用的 COLORREF 的颜色存储方式：ABGR
@@ -32,13 +34,17 @@
 // 获取某灰度对应的 rgb 色值
 #define RGB_GRAY(gray)					RGB(gray, gray, gray)
 
-
-////// EasyX 绘图函数宏定义
+////////////////////////////////////////////
+//  绘图函数相关宏定义
+////////////////////////////////////////////
 
 #define rectangle_RECT(rct)				rectangle(rct.left,rct.top,rct.right,rct.bottom);
 #define fillrectangle_RECT(rct)			fillrectangle(rct.left,rct.top,rct.right,rct.bottom);
 #define solidrectangle_RECT(rct)		solidrectangle(rct.left,rct.top,rct.right,rct.bottom);
 
+////////////////////////////////////////////
+//  绘图常量相关宏定义
+////////////////////////////////////////////
 
 /**
  * @brief 常用色彩扩展
@@ -85,3 +91,16 @@ enum EXTRA_COLORS
 	MODERN_FILL_PRESSED_BLUE = 0xf7e4cc,			///< 现代填充蓝（按下）
 };
 
+
+////////////////////////////////////////////
+//  键盘消息宏定义
+////////////////////////////////////////////
+
+// 这些功能按惯例，大家都习惯用宏的方式实现，因此就不做成函数了
+
+// 判断系统全局按键状态
+#define KEY_DOWN_GOLBAL(VK_NONAME) ((GetAsyncKeyState(VK_NONAME) & 0x8000) ? 1:0)
+
+// 判断指定窗口是否接受到某按键消息
+// 窗口句柄为空代表 HiEasyX 的活动窗口
+#define KEY_DOWN_WND(hWnd, VK_NONAME) (GetForegroundWindow() == (hWnd ? hWnd : HiEasyX::GetHWndHX()) && KEY_DOWN_GOLBAL(VK_NONAME))

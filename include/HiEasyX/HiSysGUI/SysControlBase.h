@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "../HiContainer.h"
-#include "../HiString.h"
+#include <HiEasyX/HiContainer.h>
+#include <HiEasyX/HiString.h>
 #include <windowsx.h>
 
 namespace HiEasyX

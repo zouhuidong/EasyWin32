@@ -152,4 +152,5 @@ endmacro()
 add_example(avoid-while-yangw80 examples/avoid-while-yangw80.cpp)
 add_example(avoid-white-blocks examples/avoid-white-blocks.cpp)
 add_example(chess-marathon examples/chess-marathon.cpp)
+add_example(hiex_scroll_test examples/hiex_scroll_test.cpp)
 

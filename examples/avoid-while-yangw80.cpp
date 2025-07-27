@@ -433,6 +433,7 @@ int main()
 {
 
 	initgraph(640, 480);					// 创建绘图窗口
+
 	srand((unsigned)time(NULL));			// 设置随机函数种子
 
 	setbkcolor(0x01bbfb);

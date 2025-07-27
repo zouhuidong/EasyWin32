@@ -8,7 +8,7 @@
  * 说明：
  *		凡是 HWND 传入 nulllptr 的，代表当前活动窗口；
  *		凡是 IMAGE* 传入 nullptr 的，代表当前活动窗口的图像指针（而不是当前活动图像）。
- * 
+ *
  *		以上设置是为了兼容 EasyX 原生的设定，
  *		为了避免不必要的麻烦，建议总是明确指定要操作的窗口或图像。
  */
@@ -31,8 +31,8 @@
 
 #define __HIWINDOW_H__
 
-// 补充绘图窗口初始化参数
-// 普通窗口
+ // 补充绘图窗口初始化参数
+ // 普通窗口
 #define EW_NORMAL							0
 
 // 无窗口时的索引
@@ -66,7 +66,45 @@ namespace HiEasyX
 	////////////****** 类型定义 ******////////////
 
 	/**
-	 * @brief 窗口
+	 * @brief HiEasyX 预设窗口样式（通过 SetWindowStyleHX 设置）
+	 * @sa SetWindowStyleHX, HasWindowStyleHX
+	 * @note <pre> 
+	 *		此处预设的窗口样式都是可以通过 Win32 API SetWindowLong 实现的，
+	 *		通过它提供一个较为便捷的 Win32 窗口 Style 设置途径。
+	 * </pre>
+	 * 
+	 * @note WindowStyle 不要设置超过 64 个枚举项
+	 * @sa EasyWindow::bStylesUsage
+	 */
+	enum WindowStyle
+	{
+		Resizable,	
+		Maximizable,
+		SystemMenu,
+		ToolWindow,
+
+		/**
+		 * @note <pre>
+		 *		HiEasyX 仅对滚动条提供一个简易实现，不提供复杂接口，如设置滚动条位置等。
+		 * 
+		 *		开启滚动条一般是为了为了使大于窗口的画布可以在窗口上显示，并且可以让用户自由滚动查看，
+		 *		因此，开启滚动条的同时，最好设置 AutoResizeWindowCanvas(false); 以防窗口画布跟随窗口拉伸变化。
+		 * 
+		 *		此外，在有滚动条的情况下，应当在每次手动调整窗口画布大小之后调用 UpdateScrollInfo，
+		 *		否则滚动条不能及时响应到画布大小的改变。该函数在滚动条创建时、窗口拉伸时会被自动调用。
+		 * 
+		 *		如果希望窗口不要被用户拉伸到大于画布尺寸，你可能还需要调用 SetWindowSizeLim 来设置窗口大小限制。
+		 * 
+		 *		另注，滚动条的滚动仅会滚动画布，而不滚动界面上的 SysGUI 系统控件，因为那部分的实现需要考虑很多问题，
+		 *		不好处理。本功能只是为了提供一种滚动窗口的简便方法，不愿涉及太复杂的东西。
+		 * </pre>
+		 */
+		VScroll,
+		HScroll
+	};
+
+	/**
+	 * @brief HiEasyX 窗口
 	*/
 	class Window
 	{
@@ -82,7 +120,7 @@ namespace HiEasyX
 
 		long m_lPreStyle = 0;
 		long m_lPreStyleEx = 0;
-		POINT m_pPrePos = { 0, 0};
+		POINT m_pPrePos = { 0, 0 };
 		int m_nPreCmdShow = 0;
 
 	public:
@@ -126,21 +164,19 @@ namespace HiEasyX
 
 		/**
 		 * @note <pre>
-		 *		不使用 GetHWnd 为函数名，因为 GetHWnd 被宏定义为 GetHWndHX，会带来不必要的麻烦。
-		 *		在 SysGUI 模块中也使用 GetHandle 这一称呼。
+		 *		此处不使用 GetHWnd 为函数名，因为 GetHWnd 被宏定义为 GetHWndHX，会带来不必要的麻烦。
+		 *		采用 GetHandle 作为函数名，正好也和 SysGUI 模块统一。
 		 * </pre>
 		*/
 		HWND GetHandle() const;
 		bool Exist();
 
-		//IMAGE* GetImage();
 		Canvas* GetCanvas() const;
-		//void BindCanvas(Canvas* pCanvas);
 
 		///< 设置窗口画布原点
 		void SetOrigin(int x, int y) const;
 		void GetOrigin(int* x, int* y) const;
-		
+
 		///< 设置窗口画布缩放比例
 		void SetAspectRatio(float xasp, float yasp) const;
 		void GetAspectRatio(float* xasp, float* yasp) const;
@@ -153,22 +189,9 @@ namespace HiEasyX
 		*/
 		void FlushBuffer();
 
-		// 已弃用
-		///**
-		// * @brief <pre>
-		// *		更新窗口的双缓冲
-		// *
-		// *	注意：
-		// *		必须在窗口任务内调用此函数，详见 hiex::FlushDrawing
-		// * </pre>
-		//*/
-		//void FlushDrawing(RECT rct = { 0 });
-
-		/*bool BeginTask();
-		void EndTask(bool flush = true);
-		bool IsInTask();*/
-
 		bool IsSizeChanged();
+		void SetSizeLim(Optional<SIZE> sizeMin, Optional<SIZE> sizeMax);
+		void AutoResizeCanvas(bool enable);
 
 		void CreateTray(LPCTSTR lpszTrayName);
 		void DeleteTray();
@@ -184,6 +207,11 @@ namespace HiEasyX
 		int SetStyle(long lNewStyle);
 		long GetExStyle();
 		int	SetExStyle(long lNewExStyle);
+
+		void SetStyleHX(WindowStyle style, bool bEnable);
+		bool HasStyleHX(WindowStyle style);
+
+		void UpdateScrollInfo();
 
 		POINT GetPos();
 
@@ -287,7 +315,7 @@ namespace HiEasyX
 						PostQuitMessage(0);		// 向系统指示线程已请求终止（退出）
 						break;
 
-					default:						
+					default:
 						return DefWindowProc(hWnd, msg, wParam, lParam);
 
 						// 已弃用的方式（Ver0.5.0 以前采用）：
@@ -340,22 +368,22 @@ namespace HiEasyX
 	void closeallgraph();
 
 	/**
-	 * @brief 当所有窗口都被销毁时，自动退出程序
+	 * @brief 当所有窗口都被销毁时，自动退出程序（默认不开启）
 	 * @note <pre>
 	 *		在创建第一个窗口之前也可以调用此函数（Ver0.5.0 以前可能不行）
-	 * 
+	 *
 	 *		原理：
 	 *		即在 WM_DESTROY 中判断当前窗口销毁后是否还有窗口存在，如果没有则 PostQuitMessage()，
 	 *		然后 MsgLoopHX() 接收到 WM_QUIT 消息，执行 exit() 退出程序。
 	 *		若不调用此函数，则所有窗口被销毁后，程序也不会直接退出，在这种情况下，用户需要根据 IsAnyWindow() 决定是否退出程序。
-	 * 
+	 *
 	 *		该函数主要用于兼容原生 EasyX 代码。
 	 * </pre>
 	*/
 	void AutoExit(bool enable);
 
 	/**
-	 * @brief 只允许一个绘图窗口存在，重复创建绘图窗口时关闭先前的窗口
+	 * @brief 只允许一个绘图窗口存在，重复创建绘图窗口时关闭先前的窗口（默认不开启）
 	 * @note 该函数主要用于兼容原生 EasyX 代码
 	*/
 	void SingleGraphWindow(bool enable);
@@ -371,11 +399,11 @@ namespace HiEasyX
 	 * @brief HiEasyX 内部消息循环函数（非阻塞）
 	 * @note <pre>
 	 *		需要在程序主循环中调用此函数，否则窗口无法响应消息
-	 * 
+	 *
 	 *		会自动调用 MsgLoopHX() 的函数：
 	 *		* HiEasyX::getmessageHX(), HiEasyX::peekmessageHX() 等所有消息相关函数；
 	 *		* HiEasyX::SleepHX(), HiEasyX::HpSleepHX()
-	 * 
+	 *
 	 *		上述函数会自动调用消息循环，以在阻塞时或需要获取消息时驱动消息循环运行，以维持程序正常运作。
 	 * </pre>
 	*/
@@ -435,7 +463,7 @@ namespace HiEasyX
 	 * @attention <pre>
 	 *		使用 HiWindow 时，向原生的 GetImageBuffer 函数传入 nullptr 无法对应得到当前活动窗口的图像缓冲区，
 	 *		并且可能导致程序崩溃。因此建议总是显示指定要获取的图像指针。
-	 * 
+	 *
 	 *		事实上，如果您的代码中含有一些不是完全基于 HiEasyX 的代码（例如 EasyX 原生代码），
 	 *		则很有可能包含 GetImageBuffer(nullptr) 这样的代码。必须要求这些文件包含 HiEasyX.h，
 	 *		因为在 HiEasyX.h 中，GetImageBuffer 被宏定义为 HiEasyX::GetImageBufferHX，以此避免问题的产生。
@@ -460,6 +488,11 @@ namespace HiEasyX
 	 * @throw 即使设置失败，也不会抛出异常
 	*/
 	void SetWorkingImageHX(IMAGE* img = nullptr);
+
+	/**
+	 * @brief 获取活动 IMAGE 对象（替代 EasyX 原生 GetWorkingImage 函数）
+	*/
+	IMAGE* GetWorkingImageHX();
 
 	/**
 	 * @brief 设置窗口画布的绘制原点
@@ -491,7 +524,7 @@ namespace HiEasyX
 	 * @note <pre>
 	 *		该函数原理是将窗口画布大小调整为 w/xasp * h/yasp，而绘制时坐标并不发生变化，
 	 *		仅在窗口刷新缓冲时将窗口画布缩放为 w * h 刷新到屏幕上，因此实现缩放效果。
-	 * 
+	 *
 	 *		由此可见，该函数不能像 setorigin 那样对一切 IMAGE 均适用，因为一般的 putimage 函数是直接按像素点复制，
 	 *		并不能配合完成最后一步的缩放。窗口画布的绘制由于可以在 WM_PAINT 时采用带缩放的方式，因而可以实现此功能。
 	 * </pre>
@@ -519,7 +552,7 @@ namespace HiEasyX
 	 *		HiEasyX 是天然双缓冲的，在 HiEasyX 中对窗口的绘制都只是缓存到了 Canvas 上，
 	 *		如果需要将 Canvas 的内容刷新到窗口上，请调用此函数。
 	 *		HiEasyX 在用户处理 WM_PAINT 消息之后也会自动刷新窗口缓冲，因此您若在 WM_PAINT 中编写绘图代码，则无需调用此函数。
-	 * 
+	 *
 	 *		由于总是需要保存一份窗口绘制内容的副本以便在窗口重绘（WM_PAINT）时使用，
 	 *		所以直接绘制到窗口 HDC 上对于 HiEasyX 实现多窗口并没有什么好处，
 	 *		因此 HiEasyX 也不必重写 EasyX 底层。
@@ -538,27 +571,27 @@ namespace HiEasyX
 	void FlushAllWindowBuffer(bool bInstant = false);
 
 	/**
-	 * @brief 自动刷新绘图窗口缓冲区（即在 MsgLoopHX() 中自动执行 FlushAllWindowBuffer()）
+	 * @brief 自动刷新绘图窗口缓冲区（即在 MsgLoopHX() 中自动执行 FlushAllWindowBuffer()）（默认不开启）
 	 * @note <pre>
 	 *		该函数主要用于兼容原生 EasyX 代码
-	 * 
+	 *
 	 *		按照 HiEasyX 的设计，用户应在程序主循环中调用 FlushWindowBuffer() 函数以输出绘图缓冲，
 	 *		并调用 MsgLoopHX() 函数维持窗口消息处理。
-	 * 
+	 *
 	 *		为了兼容原生 EasyX 代码，以及应对 getmessage 等阻塞的情况，在多种情况下，
 	 *		HiEasyX 内部将自动调用 MsgLoopHX() 以维持消息循环（详见 MsgLoopHX 函数注释）。
 	 *		所以，即使用户不显式调用 MsgLoopHX()，一般只要他们有调用 getmessage, Sleep 等函数（被宏定义过），程序也可以正常运行。
 	 *		但是，HiEasyX 一般并不在内部调用 FlushWindowBuffer()，如果用户忘记在绘制完成后调用 FlushWindowBuffer()，
 	 *		则他们很可能看不到绘制结果。
-	 * 
+	 *
 	 *		HiEasyX 为了兼容原生 EasyX 代码，同时给出以下两个解决方案：
 	 *		1. 原本的双缓冲函数 FLushBatchDraw 和 EndBatchDraw 被宏定义为刷新窗口缓冲并进行消息循环。
 	 *		2. 提供 AutoFlushWindowBuffer() 函数，即在 MsgLoopHX() 中自动调用 FlushAllWindowBuffer()。
-	 * 
+	 *
 	 *		对于本来使用了双缓冲的 EasyX 代码，几乎完全不需要修改就可以在 HiEasyX 上运行。
 	 *		对于原本没有使用双缓冲的 EasyX 代码，则需要在关键位置添加 FlushWindowBuffer()（较麻烦），
 	 *		或者直接开启 AutoFlushWindowBuffer()，这样就可以看到绘图效果。
-	 * 
+	 *
 	 *		还有一种极端情况，如果原 EasyX 代码中没有调用任何可以自动进行 MsgLoopHX() 的函数或宏
 	 *		（如 getmessage, Sleep, FlushBatchDraw）等，则该代码可能会在 HiEasyX 上运行时卡死，
 	 *		此时必须对源码进行必要的修改。不过，这种情况是很少见的。
@@ -576,6 +609,21 @@ namespace HiEasyX
 	 * @return 窗口的大小是否改变
 	*/
 	bool IsWindowSizeChanged(HWND hWnd = nullptr);
+
+	/**
+	 * @brief 设置窗口的拉伸限制
+	 * @param sizeMin 最小尺寸（设置为 {} 亦即 Optional<SIZE>{} 以取消最小尺寸边界）
+	 * @param sizeMax 最大尺寸（同上，可设置为 {} 取消最大尺寸边界）
+	 * @param hWnd 窗口句柄（为空表示当前活动窗口）
+	 */
+	void SetWindowSizeLim(Optional<SIZE> sizeMin, Optional<SIZE> sizeMax, HWND hWnd = nullptr);
+
+	/**
+	 * @brief 设置是否在窗口拉伸时自动调整窗口缓冲区画布大小（默认开启）
+	 * @param[in] enable 是否开启
+	 * @param[in] hWnd 窗口句柄（为空表示当前活动窗口）
+	 */
+	void AutoResizeWindowCanvas(bool enable, HWND hWnd = nullptr);
 
 	/**
 	 * @brief <pre>
@@ -681,6 +729,38 @@ namespace HiEasyX
 	 * @return 返回上一次设置的窗口样式，失败返回 0
 	*/
 	int SetWindowExStyle(long lNewExStyle, HWND hWnd = nullptr);
+
+	/**
+	 * @brief 设置窗口样式（WindowStyle 中预设的样式）
+	 * @param style 窗口样式
+	 * @param bEnable 是否启用
+	 * @param hWnd 窗口句柄（为空代表当前活动窗口）
+	 * @sa HasWindowStyleHX
+	 */
+	void SetWindowStyleHX(WindowStyle style, bool bEnable, HWND hWnd = nullptr);
+
+	/**
+	 * @brief 简单地判断一个窗口是否开启了某样式（WindosStyle 中预设的样式）（可能不能反映真实情况）
+	 * @param style 窗口样式
+	 * @param hWnd 窗口句柄（为空代表当前活动窗口）
+	 * @return 指定的样式是否启用
+	 * 
+	 * @attention 该函数仅用于简单判断某样式的开启情况
+	 * @note <pre>
+	 *		WindowStyle 中可能有些选项存在重叠的参数，但 HasWindowStyleHX 依然把这些样式都视为独立的，
+	 *		例如，在设置 Resizable 之后，事实上 Maximizable 也已经开启，但只要用户没有手动设置 Maximizable 启用，
+	 *		HasWindowStyleHX 就认为它是关闭的。
+	 * 
+	 *		事实上，该函数目前在 HiEasyX 内部主要只是用来判断 VScroll 和 HScroll 的开启情况。
+	 * </pre>
+	 */
+	bool HasWindowStyleHX(WindowStyle style, HWND hWnd = nullptr);
+
+	/**
+	 * @brief 更新滚动条的范围、页尺寸等属性（如果手动更改了窗口画布大小，则建议调用此函数以及时更新滚动条属性）
+	 * @param hWnd 滚动条所属窗口句柄
+	*/
+	void UpdateScrollInfo(HWND hWnd = nullptr);
 
 	/**
 	 * @brief 获取窗口位置
@@ -839,51 +919,3 @@ namespace HiEasyX
 	UINT GetExMessageType(ExMessage msg);
 }
 
-////////////****** 窗口样式宏定义 ******////////////
-
-// 【模板宏】启用 / 禁用某属性
-// hwnd			目标窗口
-// state		启用还是禁用
-// isExStyle	是否为 Ex 属性
-// styleCode	属性代码
-#define EnableSomeStyle(hwnd, state, isExStyle, styleCode)\
-			(isExStyle ?\
-				(state ?\
-					HiEasyX::SetWindowExStyle(\
-						(long)GetWindowExStyle(hwnd ? hwnd : HiEasyX::GetHWndHX()) | (styleCode),\
-						hwnd\
-					) :\
-					HiEasyX::SetWindowExStyle(\
-						(long)GetWindowExStyle(hwnd ? hwnd : HiEasyX::GetHWndHX()) & ~(styleCode),\
-						hwnd\
-					)\
-				) :\
-				(state ?\
-					HiEasyX::SetWindowStyle(\
-						(long)GetWindowStyle(hwnd ? hwnd : HiEasyX::GetHWndHX()) | (styleCode),\
-						hwnd\
-					) :\
-					HiEasyX::SetWindowStyle(\
-						(long)GetWindowStyle(hwnd ? hwnd : HiEasyX::GetHWndHX()) & ~(styleCode),\
-						hwnd\
-					)\
-				)\
-			)
-
-// 是否允许某窗口改变大小
-#define EnableResizing(hwnd, state)				EnableSomeStyle(hwnd, state, false, WS_SIZEBOX | WS_MAXIMIZEBOX)
-
-// 是否启用某窗口的系统标题栏按钮
-#define EnableSystemMenu(hwnd, state)			EnableSomeStyle(hwnd, state, false, WS_SYSMENU)
-
-// 是否启用当前窗口的工具栏样式
-#define EnableToolWindowStyle(hwnd, state)		EnableSomeStyle(hwnd, state, true, WS_EX_TOOLWINDOW)
-
-////////////****** 键盘消息宏定义 ******////////////
-
-// 判断系统全局按键状态
-#define KEY_DOWN_GOLBAL(VK_NONAME) ((GetAsyncKeyState(VK_NONAME) & 0x8000) ? 1:0)
-
-// 判断指定窗口是否接受到某按键消息
-// 窗口句柄为空代表 HiEasyX 的活动窗口
-#define KEY_DOWN_WND(hWnd, VK_NONAME) (GetForegroundWindow() == (hWnd ? hWnd : HiEasyX::GetHWndHX()) && KEY_DOWN_GOLBAL(VK_NONAME))

@@ -3,7 +3,7 @@
  * @brief		HiEasyX (Traditional) 库头文件
  * @note		HiEasyX 是基于 EasyX 的扩展库，支持创建多窗口、透明抗锯齿绘图、系统 UI 组件等等。
  *
- * @version		Ver 0.5.1 (dev)
+ * @version		Ver 0.5.2 (dev)
  * @envir		VisualStudio 2022 | EasyX_20240601 | Windows 11
  * @site		https://github.com/zouhuidong/HiEasyX
  *
@@ -87,11 +87,11 @@ namespace hiex = HiEasyX;
 
 // 绘图相关函数 
 // 以下对支持传入 IMAGE* = nullptr 的函数进行重新定义，以解决无法定位到当前活动窗口的问题
-
+// GetWorkingImage 虽然不传入 IMAGE*，但为了统一性也进行定义
 #define GetImageBuffer			HiEasyX::GetImageBufferHX
 #define GetImageHDC				HiEasyX::GetImageHDCHX
 #define SetWorkingImage			HiEasyX::SetWorkingImageHX
-// 无需重定义 GetWorkingImage 函数，因为他不传入 IMAGE* 参数
+#define GetWorkingImage			HiEasyX::GetWorkingImageHX
 
 // 只对窗口画布有效
 #define setorigin				HiEasyX::setoriginHX

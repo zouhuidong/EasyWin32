@@ -5,7 +5,7 @@ namespace HiEasyX
 {
 	void DrawingProperty::SaveProperty()
 	{
-		m_pImg = GetWorkingImage();
+		m_pImg = GetWorkingImageHX();
 		m_cBk = getbkcolor();
 		m_nBkMode = getbkmode();
 		m_cFill = getfillcolor();
@@ -22,7 +22,7 @@ namespace HiEasyX
 
 	void DrawingProperty::SaveWorkingImageOnly()
 	{
-		m_pImg = GetWorkingImage();
+		m_pImg = GetWorkingImageHX();
 		m_isSaved = true;
 	}
 

@@ -47,7 +47,14 @@ namespace HiEasyX
 	bool IsInRect(int x, int y, RECT rct);
 
 
-	// 可选参数
+	/**
+	 * @brief 可选参数模板
+	 * @note <pre>
+	 *		一般情况下可以像一个普通变量一样使用（发生隐式转换）
+	 *		Optional<T>{} 表示一个可选值未设置
+	 *		有时可能需要通过 .value 来显式访问可选值
+	 * </pre>
+	 */
 	template<typename T>
 	struct Optional
 	{

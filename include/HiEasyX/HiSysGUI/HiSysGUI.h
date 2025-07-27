@@ -6,15 +6,15 @@
 
 #pragma once
 
-#include "../HiDef.h"
-#include "SysGroup.h"
-#include "SysGroupBox.h"
-#include "SysStatic.h"
-#include "SysButton.h"
-#include "SysCheckBox.h"
-#include "SysRadioButton.h"
-#include "SysEdit.h"
-#include "SysComboBox.h"
+#include <HiEasyX/HiDef.h>
+#include <HiEasyX/HiSysGUI/SysGroup.h>
+#include <HiEasyX/HiSysGUI/SysGroupBox.h>
+#include <HiEasyX/HiSysGUI/SysStatic.h>
+#include <HiEasyX/HiSysGUI/SysButton.h>
+#include <HiEasyX/HiSysGUI/SysCheckBox.h>
+#include <HiEasyX/HiSysGUI/SysRadioButton.h>
+#include <HiEasyX/HiSysGUI/SysEdit.h>
+#include <HiEasyX/HiSysGUI/SysComboBox.h>
 
 // 注意：创建系统控件时，父窗口必须选择由 HiWindow 创建的窗口，控件才能正常运行
 

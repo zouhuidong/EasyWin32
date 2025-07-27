@@ -5,7 +5,7 @@
 */
 
 // 版本定义
-#define _HIEASYX_VER_STR_	HXStr("Ver 0.5.0")
+#define _HIEASYX_VER_STR_	HXStr("Ver 0.5.2")
 
 // 取消 Release 模式的程序启动动画
 //#define _NO_START_ANIMATION_

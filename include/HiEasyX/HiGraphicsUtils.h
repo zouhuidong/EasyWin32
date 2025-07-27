@@ -140,6 +140,7 @@ namespace HiEasyX
 	 * @param[in] SourceHeight 源位图中要绘制的区域的高度
 	 * @param[in] transparency 叠加透明度
 	 *
+	 * @note <pre>
 	 *	注意：
 	 *		若 目标位图上绘制的宽高 不等于 源位图中要绘制的区域的宽高，那么源位图中的区域将会被拉伸或压缩以适应目标位图上的绘制区域
 	 * </pre>
@@ -213,7 +214,7 @@ namespace HiEasyX
 	 *		开启后，原图像便不再计算混合颜色，只有载体图像参与计算。
 	 * </pre>
 	*/
-	void CopyImage_Alpha(
+	void CopyImage_SupAlpha(
 		int x,
 		int y,
 		DWORD* pDst, int wDst, int hDst,
@@ -231,7 +232,7 @@ namespace HiEasyX
 	 * @param[in] bkcolor		背景填充颜色
 	 * @return	旋转后的图像
 	*/
-	IMAGE RotateImage_Alpha(IMAGE* pImg, double radian, COLORREF bkcolor = BLACK);
+	void RotateImage_SupAlpha(IMAGE* pDstImg, IMAGE* pSrcImg, double radian, COLORREF bkcolor = BLACK);
 
 	/**
 	 * @brief	缩放图像（粗糙的、即不插值的缩放，保留透明度信息）
@@ -240,7 +241,7 @@ namespace HiEasyX
 	 * @param[in] height		目标高度（为 0 则根据宽度按比例缩放）
 	 * @return 缩放后的图像
 	*/
-	IMAGE ZoomImage_Rough_Alpha(IMAGE* srcimg, int width, int height = 0);
+	void ZoomImage_Raw_SupAlpha(IMAGE* pDstImg, IMAGE* pSrcImg, int width, int height = 0);
 
 	/**
 	 * @brief	缩放图像（双线性插值，保留透明度信息）
@@ -249,7 +250,7 @@ namespace HiEasyX
 	 * @param[in] height		目标高度（为 0 则根据宽度按比例缩放）
 	 * @return 缩放后的图像
 	*/
-	IMAGE ZoomImage_Alpha(IMAGE* srcimg, int width, int height = 0);
+	void ZoomImage_Interp_SupAlpha(IMAGE* pDstImg, IMAGE* pSrcImg, int width, int height = 0);
 
 	/**
 	 * @brief	图像缩放（基于 Win32 API，比较快，保留透明度信息）
@@ -258,22 +259,15 @@ namespace HiEasyX
 	 * @param[in] height		目标高度（为 0 则根据宽度按比例缩放）
 	 * @return 缩放后的图像
 	*/
-	IMAGE ZoomImage_StretchBlt_Alpha(IMAGE* srcimg, int width, int height = 0);
+	void ZoomImage_StretchBlt_SupAlpha(IMAGE* pDstImg, IMAGE* pSrcImg, int width, int height = 0);
 
 	/**
 	 * @brief 拉伸图像（可包含透明通道）
 	 * @param[in] img 指向目源位图的指针
 	 * @param[in] w 指定拉伸过后的宽度（为 0 则按高度比例缩放）
 	 * @param[in] h 指定拉伸过后的高度（为 0 则按宽度比例缩放）
-	 *
-	 * @note <pre>
-	 *	注意：
-	 *		拉伸过后图像地址不变，可不按照比例拉伸
-	 * </pre>
-	 * 
-	 * @note 该函数效果尚不清楚
 	*/
-	bool ZoomImage_AlphaBlend_Alpha(IMAGE* img, int w, int h = 0);
+	void ZoomImage_AlphaBlend_SupAlpha(IMAGE* pDstImg, IMAGE* pSrcImg, int w, int h = 0);
 }
 
 

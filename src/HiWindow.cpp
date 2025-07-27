@@ -23,6 +23,17 @@ namespace HiEasyX
 	////////////****** 类型定义 ******////////////
 
 	/**
+	 * @brief WindowStyle 对应的详细信息结构体
+	 * @sa WindowStyle, GetWindowStyleHX_Internal
+	 */
+	struct WindowStyleInfo
+	{
+		WindowStyle style_name;
+		bool is_ex;
+		long style_code;
+	};
+
+	/**
 	 * @brief	窗口
 	 * @note	在 InitWindowStruct 函数中初始化此结构体
 	*/
@@ -43,10 +54,9 @@ namespace HiEasyX
 		Canvas* pCanvas;							///< 窗口图像
 		float xasp;									///< 刷新窗口缓冲时使用的缩放比例（x 轴）
 		float yasp;									///< 刷新窗口缓冲时使用的缩放比例（y 轴）
+		bool bAutoResizeCanvas;						///< 是否在窗口拉伸时自动调整窗口缓冲区画布大小（默认是）
 
-		// 已弃用，直接使用 pCanvas
-		//IMAGE* pImg;								///< 窗口图像
-		//bool isNeedFlush;							///< 是否需要输出绘图缓冲
+		bool bStylesUsage[64];						///< 标志 WindowStyle 预设样式的启用情况
 
 		WNDPROC funcWndProc;						///< 窗口消息处理函数
 
@@ -69,7 +79,8 @@ namespace HiEasyX
 		void(*funcTrayMenuProc)(UINT);
 
 		bool isNewSize;								///< 窗口大小是否改变
-		//bool isBusyProcessing;						///< 是否正忙于处理内部消息（指不允许用户启动任务的情况）
+		Optional<SIZE> sizeMin;						///< 最小窗口尺寸
+		Optional<SIZE> sizeMax;						///< 最大窗口尺寸
 
 		std::vector<SysControlBase*> vecSysCtrl;	///< 记录创建的系统控件
 		bool bHasCtrl = false;						///< 是否创建过系统控件
@@ -115,7 +126,7 @@ namespace HiEasyX
 	// static 函数为内部函数，外部无法调用
 	// 其余函数为对外接口函数
 
-	// 检验窗口索引是否合法
+	// 检验窗口索引是否合法（不判断窗口是否被销毁，如需要请使用 IsWindowExists）
 	static bool IsValidWindowIndex(int index)
 	{
 		return index >= 0 && index < (int)g_vecWindows.size();
@@ -191,6 +202,7 @@ namespace HiEasyX
 		}
 	}
 
+	// 判断索引是否合法，且判断窗口是否存在（未被销毁）
 	static bool IsWindowExists(int index)
 	{
 		return IsValidWindowIndex(index) && g_vecWindows[index].isWindowAlive;
@@ -321,21 +333,6 @@ namespace HiEasyX
 		oldclock = StdClock::now();
 	}
 
-	// 已弃用，直接使用 GetWindowCanvas
-	//IMAGE* GetWindowImage(HWND hWnd)
-	//{
-	//	int index = GetWindowIndex(hWnd);
-	//	if (IsWindowExists(index))
-	//	{
-	//		//return g_vecWindows[index].pBufferImg;
-	//		return g_vecWindows[index].pCanvas;
-	//	}
-	//	else
-	//	{
-	//		return nullptr;
-	//	}
-	//}
-
 	Canvas* GetWindowCanvas(HWND hWnd)
 	{
 		int index = GetWindowIndex(hWnd);
@@ -353,11 +350,11 @@ namespace HiEasyX
 	{
 		if (img)
 		{
-			return GetImageBuffer(img);
+			return ::GetImageBuffer(img);
 		}
 		else if (HasFocusedWindow())
 		{
-			return GetImageBuffer(g_vecWindows[g_nFocusWindowIndex].pCanvas);
+			return ::GetImageBuffer(g_vecWindows[g_nFocusWindowIndex].pCanvas);
 		}
 		else
 		{
@@ -369,11 +366,11 @@ namespace HiEasyX
 	{
 		if (img)
 		{
-			return GetImageHDC(img);
+			return ::GetImageHDC(img);
 		}
 		else if (HasFocusedWindow())
 		{
-			return GetImageHDC(g_vecWindows[g_nFocusWindowIndex].pCanvas);
+			return ::GetImageHDC(g_vecWindows[g_nFocusWindowIndex].pCanvas);
 		}
 		else
 		{
@@ -385,16 +382,21 @@ namespace HiEasyX
 	{
 		if (img)
 		{
-			SetWorkingImage(img);
+			::SetWorkingImage(img);
 		}
 		else if (HasFocusedWindow())
 		{
-			SetWorkingImage(g_vecWindows[g_nFocusWindowIndex].pCanvas);
+			::SetWorkingImage(g_vecWindows[g_nFocusWindowIndex].pCanvas);
 		}
 		else
 		{
 			//throw std::runtime_error("SetWorkingImageHX(nullptr) called, but no working window assigned.");
 		}
+	}
+
+	IMAGE* GetWorkingImageHX()
+	{
+		return ::GetWorkingImage();
 	}
 
 	void setoriginHX(int x, int y, HWND hwnd)
@@ -472,29 +474,6 @@ namespace HiEasyX
 		}
 	}
 
-	/*void BindWindowCanvas(Canvas* pCanvas, HWND hWnd)
-	{
-		int index = GetWindowIndex(hWnd);
-		if (IsWindowExists(index))
-		{
-			g_vecWindows[index].pBufferImgCanvas = pCanvas;
-			pCanvas->BindToWindow(g_vecWindows[index].hWnd, g_vecWindows[index].pBufferImg);
-		}
-	}*/
-
-	/*void init_end(HWND hWnd)
-	{
-		if (hWnd)
-		{
-			int index = GetWindowIndex(hWnd);
-			while (IsWindowExists(index))
-				Sleep(100);
-		}
-		else
-			while (IsAnyWindow())
-				Sleep(100);
-	}*/
-
 	void AutoExit(bool enable)
 	{
 		g_bAutoExit = enable;
@@ -514,7 +493,7 @@ namespace HiEasyX
 	{
 		//if (!hWnd || GetFocusedWindow().hWnd == hWnd)
 		//{
-		//	if (GetWorkingImage() != GetFocusedWindow().pCanvas)
+		//	if (GetWorkingImageHX() != GetFocusedWindow().pCanvas)
 		//	{
 		//		SetWorkingImage(GetFocusedWindow().pCanvas);
 		//	}
@@ -535,23 +514,6 @@ namespace HiEasyX
 			return false;
 		}
 	}
-
-	//void QuickDraw(UINT nSkipPixels, HWND hWnd)
-	//{
-	//	int index = GetWindowIndex(hWnd);
-	//	if (IsWindowExists(index))
-	//		g_vecWindows[index].nSkipPixels = nSkipPixels;
-	//}
-
-	//DrawMode GetDrawMode()
-	//{
-	//	return g_fDrawMode;
-	//}
-
-	//void SetDrawMode(DrawMode mode)
-	//{
-	//	g_fDrawMode = mode;
-	//}
 
 	void FlushWindowBuffer(HWND hWnd, bool bInstant)
 	{
@@ -584,36 +546,6 @@ namespace HiEasyX
 		//InvalidateRect(hWnd, 0, false);
 		//// 该函数检查窗口的更新区域，若不为空则立即发送 WM_PAINT 消息
 		//UpdateWindow(hWnd);
-
-		// 已弃用
-		//switch (g_fDrawMode)
-		//{
-		//case DM_Real:
-		//	RedrawInternal(hWnd);
-		//	break;
-
-		//case DM_Normal:
-		//	RedrawInternal(hWnd);
-		//	
-		//	// 这个太慢了
-		//	//InvalidateRect(hWnd, nullptr, false);
-		//	break;
-
-		//case DM_Fast:
-		//	if (!(clock() % 2))
-		//		SendUserRedrawMsg(hWnd);
-		//	break;
-
-		//case DM_VeryFast:
-		//	if (!(clock() % 5))
-		//		SendUserRedrawMsg(hWnd);
-		//	break;
-
-		//case DM_Fastest:
-		//	if (!(clock() % 9))
-		//		SendUserRedrawMsg(hWnd);
-		//	break;
-		//}
 	}
 
 	void FlushAllWindowBuffer(bool bInstant)
@@ -649,143 +581,6 @@ namespace HiEasyX
 		HiEasyX::FlushAllWindowBuffer(false);
 		HiEasyX::MsgLoopHX();
 	}
-
-	// 已弃用
-	//// 更新窗口画布的双缓冲
-	//// rct 更新区域（坐标都为 0 表示全部区域）
-	/*
-	void FlushDrawing(int index, RECT rct = {0})
-	{
-		if (!IsWindowExists(index))
-		{
-			return;
-		}
-
-		int w = g_vecWindows[index].pImg->getwidth();
-		int h = g_vecWindows[index].pImg->getheight();
-
-		// 是否全部更新
-		bool isAllFlush = !(rct.left && rct.top && rct.right && rct.bottom);
-
-		// 双缓冲的两层画布
-		DWORD* dst = GetImageBuffer(g_vecWindows[index].pImg);
-		DWORD* src = GetImageBuffer(g_vecWindows[index].pBufferImg);
-
-		// 部分重绘时，修正重绘区域
-		RECT rctCorrected = rct;
-		if (!isAllFlush)
-		{
-			if (rct.left < 0)		rctCorrected.left = 0;
-			if (rct.top < 0)		rctCorrected.top = 0;
-			if (rct.right > w)		rctCorrected.right = w;
-			if (rct.bottom > h)		rctCorrected.bottom = h;
-		}
-
-		// 不跳过像素的模式
-		if (g_vecWindows[index].nSkipPixels == 0)
-		{
-			// 全部更新
-			if (isAllFlush)
-			{
-				// fastest
-				memcpy(dst, src, sizeof(DWORD) * w * h);
-			}
-			// 部分更新
-			else
-			{
-				for (int x = rctCorrected.left; x < rctCorrected.right; x++)
-				{
-					for (int y = rctCorrected.top; y < rctCorrected.bottom; y++)
-					{
-						int index = x + y * w;
-						dst[index] = src[index];
-					}
-				}
-			}
-		}
-		// 跳过像素的模式
-		else
-		{
-			// 全部更新
-			if (isAllFlush)
-			{
-				int len = w * h;
-				for (int i = 0; i < len; i++)		// 线性遍历画布
-				{
-					if (dst[i] == src[i])			// 若两画布某位置色彩重叠，则跳过接下来的 n 个像素点
-					{
-						i += g_vecWindows[index].nSkipPixels;
-						continue;
-					}
-					dst[i] = src[i];
-				}
-			}
-			// 部分更新
-			else
-			{
-				for (int y = rctCorrected.top; y < rctCorrected.bottom; y++)	// 在矩形区域内遍历画布
-				{
-					for (int x = rctCorrected.left; x < rctCorrected.right; x++)
-					{
-						int index = x + y * w;
-						if (dst[index] == src[index])	// 若两画布某位置色彩重叠，则在 x 方向上跳过接下来的 n 个像素点
-						{
-							x += g_vecWindows[index].nSkipPixels;
-							continue;
-						}
-						dst[index] = src[index];
-					}
-				}
-			}
-		}
-	}// FlushDrawing
-	*/
-
-	// 已弃用
-	//// 提供给用户的接口
-	//void FlushDrawing(RECT rct)
-	//{
-	//	// 为了防止用户更新双缓冲时窗口拉伸导致画布冲突，必须在窗口任务内调用此函数
-	//	if (IsInTask())
-	//	{
-	//		FlushDrawing(g_nFocusWindowIndex, rct);
-	//	}
-	//}
-
-	/*void EnableAutoFlush(bool enable)
-	{
-		g_bAutoFlush = enable;
-	}*/
-
-	//bool BeginTask()
-	//{
-	//	// 不做窗口匹配判断，只检验是否处于任务中
-	//	if (!g_isInTask && HasFocusedWindow())
-	//	{
-	//		WaitForProcessing(g_nFocusWindowIndex);
-	//		g_isInTask = true;
-	//	}
-	//	return g_isInTask;
-	//}
-
-	//void EndTask(bool flush)
-	//{
-	//	if (g_isInTask)
-	//	{
-	//		if (flush && HasFocusedWindow())
-	//		{
-	//			GetFocusedWindow().isNeedFlush = true;
-	//			//FlushDrawing(g_nFocusWindowIndex);
-	//		}
-
-	//		g_isInTask = false;
-	//	}
-	//}
-
-	/*bool IsInTask(HWND hWnd)
-	{
-		return g_isInTask && (hWnd ? GetFocusedWindow().hWnd == hWnd : true);
-	}*/
 
 	// 重新调整窗口画布大小
 	static void ResizeWindowImage(int index, RECT rct)
@@ -874,6 +669,25 @@ namespace HiEasyX
 		else
 		{
 			return false;
+		}
+	}
+
+	void SetWindowSizeLim(Optional<SIZE> sizeMin, Optional<SIZE> sizeMax, HWND hWnd)
+	{
+		int index = GetWindowIndex(hWnd);
+		if (IsValidWindowIndex(index))
+		{
+			g_vecWindows[index].sizeMin = sizeMin;
+			g_vecWindows[index].sizeMax = sizeMax;
+		}
+	}
+
+	void AutoResizeWindowCanvas(bool enable, HWND hWnd)
+	{
+		int index = GetWindowIndex(hWnd);
+		if (IsValidWindowIndex(index))
+		{
+			g_vecWindows[index].bAutoResizeCanvas = enable;
 		}
 	}
 
@@ -1149,6 +963,213 @@ namespace HiEasyX
 		return SetWindowLong(hWnd, GWL_EXSTYLE, lNewExStyle);
 	}
 
+	/**
+	 * @brief 获取 WindowStyle 预设样式的详细信息
+	 */
+	static WindowStyleInfo GetWindowStyleHX_Internal(WindowStyle style)
+	{
+		WindowStyleInfo info = {};
+		info.style_name = style;
+		switch (style)
+		{
+		case Resizable:
+			info.is_ex = false;
+			info.style_code = WS_SIZEBOX | WS_MAXIMIZEBOX;
+			break;
+		case Maximizable:
+			info.is_ex = false;
+			info.style_code = WS_MAXIMIZEBOX;
+			break;
+		case SystemMenu:
+			info.is_ex = false;
+			info.style_code = WS_SYSMENU;
+			break;
+		case ToolWindow:
+			info.is_ex = true;
+			info.style_code = WS_EX_TOOLWINDOW;
+			break;
+		case VScroll:
+			info.is_ex = false;
+			info.style_code = WS_VSCROLL;
+			break;
+		case HScroll:
+			info.is_ex = false;
+			info.style_code = WS_HSCROLL;
+			break;
+		}
+		return info;
+	}
+
+	// 内部设置窗口样式的函数（负责完成和 Win32 API 交互的部分）
+	// hwnd			目标窗口
+	// state		启用还是禁用
+	// isExStyle	是否为 Ex 属性
+	// styleCode	属性代码
+	static void SetWindowStyleHX_Internal(HWND hwnd, bool state, bool isExStyle, long styleCode)
+	{
+		hwnd = hwnd ? hwnd : GetHWndHX();
+		if (isExStyle)
+		{
+			long exstyle = GetWindowExStyle(hwnd);
+			if (state)
+			{
+				exstyle |= styleCode;
+			}
+			else
+			{
+				exstyle &= ~styleCode;
+			}
+
+			SetWindowExStyle(exstyle, hwnd);
+		}
+		else
+		{
+			long style = GetWindowStyle(hwnd);
+			if (state)
+			{
+				style |= styleCode;
+			}
+			else
+			{
+				style &= ~styleCode;
+			}
+
+			SetWindowStyle(style, hwnd);
+		}
+	}
+
+	void SetWindowStyleHX(WindowStyle style, bool bEnable, HWND hWnd)
+	{
+		int index = GetWindowIndex(hWnd);
+		if (!IsValidWindowIndex(index))
+		{
+			return;
+		}
+
+		WindowStyleInfo info = GetWindowStyleHX_Internal(style);
+		SetWindowStyleHX_Internal(g_vecWindows[index].hWnd, bEnable, info.is_ex, info.style_code);
+		g_vecWindows[index].bStylesUsage[style] = bEnable;
+
+		// 滚动条特殊配置
+		if (style == VScroll || style == HScroll)
+		{
+			// 滚动条的开启和关闭需要使用 SWP_FRAMECHANGED 刷新
+			SetWindowPos(hWnd, NULL, 0, 0, 0, 0,
+				SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+			// 更新滚动条配置
+			UpdateScrollInfo(g_vecWindows[index].hWnd);
+		}
+	}
+
+	bool HasWindowStyleHX(WindowStyle style, HWND hWnd)
+	{
+		int index = GetWindowIndex(hWnd);
+		if (!IsValidWindowIndex(index))
+		{
+			return false;
+		}
+
+		// NOTE
+		// 使用 Win32 的方法进行判定会出现未知问题，即似乎在窗口的 Canvas IMAGE::Resize 前后，
+		// GetWindowStyle 的返回值并不相同，导致判定出错。目前原因不明。
+
+		/*WindowStyleInfo info = GetWindowStyleHX_Internal(style);
+		long current_style = 0;
+		if (info.is_ex)
+		{
+			current_style = GetWindowExStyle(g_vecWindows[index].hWnd);
+		}
+		else
+		{
+			current_style = GetWindowStyle(g_vecWindows[index].hWnd);
+		}
+
+		long test = GetWindowStyle(g_vecWindows[index].hWnd);
+
+		return (current_style & info.style_code) == info.style_code;*/
+
+		// 目前只好手动存储一下 Style 的启用情况
+		return g_vecWindows[index].bStylesUsage[style];
+	}
+
+	void UpdateScrollInfo(HWND hWnd)
+	{
+		int index = GetWindowIndex(hWnd);
+		if (!IsValidWindowIndex(index))
+		{
+			return;
+		}
+
+		// 客户区大小
+		RECT rctWnd;
+		GetClientRect(g_vecWindows[index].hWnd, &rctWnd);	// 必有 LT(0, 0)
+
+		// 可以滚动的范围大小
+		int max_x = g_vecWindows[index].pCanvas->getwidth();
+		int max_y = g_vecWindows[index].pCanvas->getheight();
+		if (max_x < 0)
+		{
+			max_x = 0;
+		}
+		if (max_y < 0)
+		{
+			max_y = 0;
+		}
+
+		SCROLLINFO si;
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_ALL;
+
+		// y 方向
+		if (HasWindowStyleHX(VScroll, g_vecWindows[index].hWnd))
+		{
+			// 存储旧的 ScrollInfo
+			GetScrollInfo(g_vecWindows[index].hWnd, SB_VERT, &si);
+			int oldPageSize = si.nPage;
+			int oldPos = si.nPos;
+
+			// 设置新的 ScrollInfo
+			si.nMin = 0;
+			si.nMax = max_y;
+			si.nPage = rctWnd.bottom;	// 一页的尺寸，该值主要是保留下来自己在 OnScroll 时用的
+			SetScrollInfo(g_vecWindows[index].hWnd, SB_VERT, &si, true);
+
+			// 根据 nPage 的改变相应地滚动窗口（这是对控件的滚动，而非对绘图内容的）
+			// 窗口控件滚动触发条件：
+			// 1. 在原先的视图中已经能看到页面底部（oldPos + oldPageSize >= max_y）
+			// 2. 窗口高度继续增加，即 PageSize 增量（si.nPage - oldPageSize）大于零
+			// 那么，窗口中的控件就要跟随下滚，下滚距离等于的窗口的高度增量
+			int scroll_amount = si.nPage - oldPageSize;
+			if (scroll_amount > 0 && oldPos + oldPageSize >= max_y)
+			{
+				// 注：禁用控件滚动，因为有很多其它情况不好处理，遂不做支持
+				//ScrollWindow(g_vecWindows[index].hWnd, 0, scroll_amount, NULL, NULL);
+
+				// 无用，无需添加
+				//UpdateWindow(g_vecWindows[index].hWnd);
+			}
+		}
+		// x 方向
+		if (HasWindowStyleHX(HScroll, g_vecWindows[index].hWnd))
+		{
+			GetScrollInfo(g_vecWindows[index].hWnd, SB_HORZ, &si);
+			int oldPageSize = si.nPage;
+			int oldPos = si.nPos;
+
+			si.nMin = 0;
+			si.nMax = max_x;
+			si.nPage = rctWnd.right;
+			SetScrollInfo(g_vecWindows[index].hWnd, SB_HORZ, &si, true);
+
+			int scroll_amount = si.nPage - oldPageSize;
+			if (scroll_amount > 0 && oldPos + oldPageSize >= max_x)
+			{
+				//ScrollWindow(g_vecWindows[index].hWnd, scroll_amount, 0, NULL, NULL);
+			}
+		}
+	}
+
 	POINT GetWindowPos(HWND hWnd)
 	{
 		if (!hWnd)	hWnd = GetFocusedWindow().hWnd;
@@ -1216,21 +1237,210 @@ namespace HiEasyX
 		return hIcon;
 	}
 
-	static void OnSize(int indexWnd)
+	static Optional<LRESULT> OnSize(int indexWnd, WPARAM wParam, LPARAM lParam)
 	{
 		RECT rctWnd;
 		GetClientRect(g_vecWindows[indexWnd].hWnd, &rctWnd);
 
-		//WaitForProcessing(indexWnd);
-		//g_vecWindows[indexWnd].isBusyProcessing = true;		// 不能再启动任务
-		//WaitForTask(g_vecWindows[indexWnd].hWnd);			// 等待最后一个任务完成
+		// 自动调整缓冲区画布大小
+		if (g_vecWindows[indexWnd].bAutoResizeCanvas)
+		{
+			ResizeWindowImage(indexWnd, rctWnd);
+		}
 
-		ResizeWindowImage(indexWnd, rctWnd);
+		// 处理滚动条
+		if (HasWindowStyleHX(VScroll) || HasWindowStyleHX(HScroll))
+		{
+			UpdateScrollInfo(g_vecWindows[indexWnd].hWnd);
+		}
 
-		//g_vecWindows[indexWnd].isBusyProcessing = false;
+		return 0;
 	}
 
-	static void OnTray(int indexWnd, LPARAM lParam)
+	static Optional<LRESULT> OnGetMinMaxInfo(int indexWnd, LPARAM lParam)
+	{
+		MINMAXINFO* lpMMI = (MINMAXINFO*)lParam;
+
+		RECT rectClient;
+		GetClientRect(g_vecWindows[indexWnd].hWnd, &rectClient);
+		RECT rectWindow;
+		GetWindowRect(g_vecWindows[indexWnd].hWnd, &rectWindow);
+
+		// 计算标题栏和边框尺寸
+		int nWidthOverhead = rectWindow.right - rectWindow.left - rectClient.right + rectClient.left;
+		int nHeightOverhead = rectWindow.bottom - rectWindow.top - rectClient.bottom + rectClient.top;
+
+		// 设置最小跟踪尺寸
+		if (g_vecWindows[indexWnd].sizeMin.isSet)
+		{
+			lpMMI->ptMinTrackSize.x = g_vecWindows[indexWnd].sizeMin.value.cx + nWidthOverhead;
+			lpMMI->ptMinTrackSize.y = g_vecWindows[indexWnd].sizeMin.value.cy + nHeightOverhead;
+		}
+		// 设置最大跟踪尺寸
+		if (g_vecWindows[indexWnd].sizeMax.isSet)
+		{
+			lpMMI->ptMaxTrackSize.x = g_vecWindows[indexWnd].sizeMax.value.cx + nWidthOverhead;
+			lpMMI->ptMaxTrackSize.y = g_vecWindows[indexWnd].sizeMax.value.cy + nHeightOverhead;
+		}
+
+		return 0;
+	}
+
+	/**
+	 * @brief 处理 WM_VSCROLL 和 WM_HSCROLL 消息
+	 * @note 仅用于处理用户拖拽滚动条等事件，不用于处理窗口拉伸导致的滚动条更新（放在 OnSize 中完成）
+	 */
+	static Optional<LRESULT> OnScroll(int indexWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+	{
+		HWND hwnd = g_vecWindows[indexWnd].hWnd;
+
+		SCROLLINFO si;
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_POS;
+		GetScrollInfo(hwnd, SB_HORZ, &si);
+		int xPos_old = si.nPos;
+		GetScrollInfo(hwnd, SB_VERT, &si);
+		int yPos_old = si.nPos;			// Save the position for comparison later on.
+
+		//RECT rctWnd;
+		//GetClientRect(hwnd, &rctWnd);	// left and top will always be zero
+
+		switch (msg)
+		{
+		case WM_VSCROLL:
+		{
+			// Get all the vertial scroll bar information.
+			si.cbSize = sizeof(si);
+			si.fMask = SIF_ALL;
+			GetScrollInfo(hwnd, SB_VERT, &si);
+
+			switch (LOWORD(wParam))
+			{
+
+				// User clicked the HOME keyboard key.
+			case SB_TOP:
+				si.nPos = si.nMin;
+				break;
+
+				// User clicked the END keyboard key.
+			case SB_BOTTOM:
+				si.nPos = si.nMax;
+				break;
+
+				// User clicked the top arrow.
+			case SB_LINEUP:
+				si.nPos -= 10;
+				break;
+
+				// User clicked the bottom arrow.
+			case SB_LINEDOWN:
+				si.nPos += 10;
+				break;
+
+				// User clicked the scroll bar shaft above the scroll box.
+				// 注：这里的 PAGEUP, PAGEDOWN 在用户点击滚动条滑块上、下方的空白位置时触发
+			case SB_PAGEUP:
+				si.nPos -= si.nPage;
+				break;
+
+				// User clicked the scroll bar shaft below the scroll box.
+			case SB_PAGEDOWN:
+				si.nPos += si.nPage;
+				break;
+
+				// User dragged the scroll box.
+			case SB_THUMBTRACK:
+				si.nPos = si.nTrackPos;
+				break;
+
+			default:
+				break;
+			}
+
+			// Set the position and then retrieve it.  Due to adjustments
+			// by Windows it may not be the same as the value set.
+			si.fMask = SIF_POS;
+			SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+			GetScrollInfo(hwnd, SB_VERT, &si);
+
+			// If the position has changed, scroll window and update it.
+			if (si.nPos != yPos_old)
+			{
+				// 该语句用于实现窗口上的控件随滚动条移动
+				// 现已禁用
+				//ScrollWindow(hwnd, 0, yPos_old - si.nPos, NULL, NULL);
+				//UpdateWindow(hwnd);
+
+				// 立即重绘（这样就可以边拖动边看到拖动效果）
+				FlushWindowBuffer(g_vecWindows[indexWnd].hWnd, true);
+			}
+
+			return 0;
+			break;
+		}
+
+		case WM_HSCROLL:
+		{
+			si.cbSize = sizeof(si);
+			si.fMask = SIF_ALL;
+			GetScrollInfo(hwnd, SB_HORZ, &si);
+
+			switch (LOWORD(wParam))
+			{
+			case SB_TOP:
+				si.nPos = si.nMin;
+				break;
+
+			case SB_BOTTOM:
+				si.nPos = si.nMax;
+				break;
+
+			case SB_LINEUP:
+				si.nPos -= 10;
+				break;
+
+			case SB_LINEDOWN:
+				si.nPos += 10;
+				break;
+
+			case SB_PAGEUP:
+				si.nPos -= si.nPage;
+				break;
+
+			case SB_PAGEDOWN:
+				si.nPos += si.nPage;
+				break;
+
+			case SB_THUMBTRACK:
+				si.nPos = si.nTrackPos;
+				break;
+
+			default:
+				break;
+			}
+
+			si.fMask = SIF_POS;
+			SetScrollInfo(hwnd, SB_HORZ, &si, TRUE);
+			GetScrollInfo(hwnd, SB_HORZ, &si);
+
+			if (si.nPos != xPos_old)
+			{
+				//ScrollWindow(hwnd, xPos_old - si.nPos, 0, NULL, NULL);
+
+				FlushWindowBuffer(g_vecWindows[indexWnd].hWnd, true);
+			}
+
+			return 0;
+			break;
+		}
+
+		default:
+			return {};	// 未处理
+			break;
+		}
+	}
+
+	static Optional<LRESULT> OnTray(int indexWnd, LPARAM lParam)
 	{
 		if (g_vecWindows[indexWnd].isUseTray)
 		{
@@ -1264,19 +1474,30 @@ namespace HiEasyX
 			default:
 				break;
 			}
+
+			return 0;
+		}
+		else
+		{
+			return {};	// 未处理此消息
 		}
 	}
 
-	static void OnTaskBarCreated(int indexWnd)
+	static Optional<LRESULT> OnTaskBarCreated(int indexWnd)
 	{
 		if (g_vecWindows[indexWnd].isUseTray)
 		{
 			ShowTray(&g_vecWindows[indexWnd].nid);
+			return 0;
+		}
+		else
+		{
+			return {}; // 未处理
 		}
 	}
 
 	// 登记 ExMessage 消息
-	static void RegisterExMessage(int indexWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+	static Optional<LRESULT> RegisterExMessage(int indexWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		// 记录消息事件
 		switch (msg)
@@ -1314,7 +1535,24 @@ namespace HiEasyX
 				msgMouse.y = (short)p.y;
 			}
 
+			// 窗口具有滚动条时，获取的坐标需要转换
+			SCROLLINFO si;
+			si.cbSize = sizeof(SCROLLINFO);
+			si.fMask = SIF_POS;
+			if (HasWindowStyleHX(HScroll, g_vecWindows[indexWnd].hWnd))
+			{
+				GetScrollInfo(g_vecWindows[indexWnd].hWnd, SB_HORZ, &si);
+				msgMouse.x += si.nPos;
+			}
+			if (HasWindowStyleHX(VScroll, g_vecWindows[indexWnd].hWnd))
+			{
+				GetScrollInfo(g_vecWindows[indexWnd].hWnd, SB_VERT, &si);
+				msgMouse.y += si.nPos;
+			}
+
 			g_vecWindows[indexWnd].vecMessage.push_back(msgMouse);
+
+			return 0;
 		}
 		break;
 
@@ -1360,6 +1598,8 @@ namespace HiEasyX
 			// 给控制台发一份，以支持 _getch() 系列函数
 			// 但是如果用户真的用了 _getch()，则会导致窗口消息阻塞，窗口卡死……故不建议用
 			PostMessage(GetConsoleWindow(), msg, wParam, lParam);
+
+			return 0;
 		}
 		break;
 
@@ -1373,6 +1613,8 @@ namespace HiEasyX
 
 			// 通知控制台
 			PostMessage(GetConsoleWindow(), msg, wParam, lParam);
+
+			return 0;
 		}
 		break;
 
@@ -1386,51 +1628,64 @@ namespace HiEasyX
 			msgWindow.wParam = wParam;
 			msgWindow.lParam = lParam;
 			g_vecWindows[indexWnd].vecMessage.push_back(msgWindow);
+
+			return 0;
 		}
 		break;
+
+		// 未处理
+		default:
+		{
+			return {};
+		}
+
 		}
 	}
 
 	// 绘制用户内容
 	static void OnPaint(int indexWnd, HDC hdc)
 	{
-		// 已弃用
-		//// 在开启自动刷新双缓冲的情况下，处理双缓冲的刷新任务
-		//if (g_bAutoFlush && g_vecWindows[indexWnd].isNeedFlush)
-		//{
-		//	WaitForProcessing(indexWnd);
-		//	g_vecWindows[indexWnd].isBusyProcessing = true;		// 不能再启动任务
-		//	WaitForTask(g_vecWindows[indexWnd].hWnd);			// 等待最后一个任务完成
-
-		//	// 更新双缓冲
-		//	FlushDrawing(indexWnd);
-		//	g_vecWindows[indexWnd].isNeedFlush = false;
-
-		//	g_vecWindows[indexWnd].isBusyProcessing = false;
-		//}
+		const EasyWindow& wnd_info = g_vecWindows[indexWnd];
 
 		// 将绘图内容输出到窗口 HDC
 		RECT rctWnd;
-		GetClientRect(g_vecWindows[indexWnd].hWnd, &rctWnd);
-		//CopyImageToHDC(g_vecWindows[indexWnd].pCanvas, hdc, rctWnd);
+		GetClientRect(wnd_info.hWnd, &rctWnd);
+		//CopyImageToHDC(wnd_info.pCanvas, hdc, rctWnd);
 
 		// 获取窗口画布的绘制原点，以呼应 setoriginHX
-		HDC hdcCanvas = GetImageHDCHX(g_vecWindows[indexWnd].pCanvas);
+		HDC hdcCanvas = GetImageHDCHX(wnd_info.pCanvas);
 		POINT ptCanvasOrg;
 		GetViewportOrgEx(hdcCanvas, &ptCanvasOrg);
 
-		if (g_vecWindows[indexWnd].xasp != 1 || g_vecWindows[indexWnd].yasp != 1)
+		// 如果开启了滚动条，则根据滚动条位置再修改绘制原点
+		SCROLLINFO si;
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_POS; // 只获取位置信息
+		if (HasWindowStyleHX(HScroll, wnd_info.hWnd))
 		{
-			if (fabs(g_vecWindows[indexWnd].xasp) > 1e-4 && fabs(g_vecWindows[indexWnd].yasp) > 1e-4)
+			GetScrollInfo(wnd_info.hWnd, SB_HORZ, &si);
+			int scroll_x = si.nPos;
+			ptCanvasOrg.x -= scroll_x;
+		}
+		if (HasWindowStyleHX(VScroll, wnd_info.hWnd))
+		{
+			GetScrollInfo(wnd_info.hWnd, SB_VERT, &si);
+			int scroll_y = si.nPos;
+			ptCanvasOrg.y -= scroll_y;
+		}
+
+		if (wnd_info.xasp != 1 || wnd_info.yasp != 1)
+		{
+			if (fabs(wnd_info.xasp) > 1e-4 && fabs(wnd_info.yasp) > 1e-4)
 			{
 				StretchBlt(
 					hdc,	/* 目标设备 */
 					rctWnd.left, rctWnd.top, rctWnd.right, rctWnd.bottom, /* 目标绘制区域 */
 					hdcCanvas, /* 源设备 */
-					(int)(-ptCanvasOrg.x / g_vecWindows[indexWnd].xasp), /* 源拷贝起点 */
-					(int)(-ptCanvasOrg.y / g_vecWindows[indexWnd].yasp),
-					(int)((rctWnd.right - rctWnd.left) / g_vecWindows[indexWnd].xasp),
-					(int)((rctWnd.bottom - rctWnd.top) / g_vecWindows[indexWnd].yasp),
+					(int)(-ptCanvasOrg.x / wnd_info.xasp), /* 源拷贝起点 */
+					(int)(-ptCanvasOrg.y / wnd_info.yasp),
+					(int)((rctWnd.right - rctWnd.left) / wnd_info.xasp),
+					(int)((rctWnd.bottom - rctWnd.top) / wnd_info.yasp),
 					SRCCOPY
 				);
 			}
@@ -1462,7 +1717,7 @@ namespace HiEasyX
 		}
 	}
 
-	static void OnMove(HWND hWnd)
+	static Optional<LRESULT> OnMove(HWND hWnd)
 	{
 		//RECT rctWnd;
 		//GetWindowRect(hWnd, &rctWnd);
@@ -1475,13 +1730,15 @@ namespace HiEasyX
 		//{
 		//	EnforceRedraw(hWnd);
 		//}
+
+		return 0;
 	}
 
-	static void OnDestroy(int indexWnd, WPARAM wParam)
+	static Optional<LRESULT> OnDestroy(int indexWnd, WPARAM wParam)
 	{
 		if (!IsWindowExists(indexWnd))
 		{
-			return;
+			return {};	// 未处理
 		}
 		// 已弃用
 		//// 先设置窗口死亡，再标识忙碌，等待任务结束
@@ -1529,6 +1786,8 @@ namespace HiEasyX
 				PostQuitMessage(0);
 			}
 		}
+
+		return 0;
 	}
 
 	static HWND OnSysCtrlCreate(int indexWnd, WPARAM wParam, LPARAM lParam)
@@ -1553,7 +1812,7 @@ namespace HiEasyX
 
 	// 处理系统控件消息
 	// bRet 传出，标记是否直接返回
-	static LRESULT SysCtrlProc(int indexWnd, UINT msg, WPARAM wParam, LPARAM lParam, bool& bRet)
+	static Optional<LRESULT> SysCtrlProc(int indexWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		switch (msg)
 		{
@@ -1561,7 +1820,6 @@ namespace HiEasyX
 		case WM_SYSCTRL_CREATE:
 		{
 			g_vecWindows[indexWnd].bHasCtrl = true;
-			bRet = true;
 			return (LRESULT)OnSysCtrlCreate(indexWnd, wParam, lParam);
 			break;
 		}
@@ -1578,7 +1836,6 @@ namespace HiEasyX
 				}
 			}
 
-			bRet = true;
 			return 0;
 			break;
 		}
@@ -1596,15 +1853,13 @@ namespace HiEasyX
 					LRESULT lr = pCtrl->UpdateMessage(msg, wParam, lParam, bCtrlRet);
 					if (bCtrlRet)
 					{
-						bRet = true;
 						return lr;
 					}
 				}
 			}
 		}
 
-		bRet = false;
-		return 0;
+		return {};
 	}
 
 	static void OnCreate(int indexWnd, HWND hWnd, LPARAM lParam)
@@ -1615,6 +1870,7 @@ namespace HiEasyX
 	static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		int indexWnd = GetWindowIndex(hWnd);		// 窗口索引
+		Optional<LRESULT> retVal = 0;			// 记录返回值
 
 		// 调用窗口不在窗口列表内
 		if (!IsValidWindowIndex(indexWnd))
@@ -1656,7 +1912,7 @@ namespace HiEasyX
 				//}
 
 			case WM_MOVE:
-				OnMove(hWnd);
+				retVal = OnMove(hWnd);;
 				break;
 
 				// WM_CLOSE 是用户请求关闭窗口，如果程序同意，则调用 DestroyWindow() 销毁窗口，
@@ -1670,50 +1926,60 @@ namespace HiEasyX
 				// WM_DESTROY 消息意味着系统已经在销毁窗口，需要程序释放自己的内存。
 				// 注：WM_DESTROY 并不意味着程序退出（可以在后台继续运行），除非调用 PostQuitMessage()。
 			case WM_DESTROY:
-				OnDestroy(indexWnd, wParam);
+				retVal = OnDestroy(indexWnd, wParam);
 				break;
 
 			case WM_SIZE:
-				OnSize(indexWnd);
+				retVal = OnSize(indexWnd, wParam, lParam);
+				break;
+
+				// 设置窗口的拉伸大小范围
+			case WM_GETMINMAXINFO:
+				retVal = OnGetMinMaxInfo(indexWnd, lParam);
+				break;
+
+			case WM_VSCROLL:
+			case WM_HSCROLL:
+				retVal = OnScroll(indexWnd, msg, wParam, lParam);
 				break;
 
 				// 托盘消息
 			case WM_TRAY:
-				OnTray(indexWnd, lParam);
+				retVal = OnTray(indexWnd, lParam);
 				break;
 
 			default:
 				// 系统任务栏重新创建，此时可能需要重新创建托盘
 				if (msg == g_uWM_TASKBARCREATED)
 				{
-					OnTaskBarCreated(indexWnd);
+					retVal = OnTaskBarCreated(indexWnd);
 				}
 				break;
 			}
 
 			// 登记 ExMessage 消息
-			RegisterExMessage(indexWnd, msg, wParam, lParam);
+			retVal = RegisterExMessage(indexWnd, msg, wParam, lParam);
 
 			// 处理系统控件消息
-			bool bRetSysCtrl = false;
-			LRESULT lrSysCtrl = SysCtrlProc(indexWnd, msg, wParam, lParam, bRetSysCtrl);
-			if (bRetSysCtrl)
+			Optional<LRESULT> lrSysCtrl = SysCtrlProc(indexWnd, msg, wParam, lParam);
+			if (lrSysCtrl.isSet)
+			{
 				return lrSysCtrl;
+			}
 
 			//////////// End of HiEasyX MsgLoopHX Process ////////////
-
-			LRESULT resultProc = 0;		// 记录返回值
 
 			// 调用用户消息处理函数
 			if (g_vecWindows[indexWnd].funcWndProc)
 			{
-				resultProc = g_vecWindows[indexWnd].funcWndProc(hWnd, msg, wParam, lParam);
+				retVal = g_vecWindows[indexWnd].funcWndProc(hWnd, msg, wParam, lParam);
 			}
 
-			// 否则使用默认方法处理（WM_PAINT 单独处理）
-			else if (msg != WM_PAINT)
+			// 以上过程都没有处理此消息，则使用默认方法处理
+			// 注：WM_PAINT 必须单独处理，不能调用 DefWindowProc
+			if (retVal.isSet == false && msg != WM_PAINT)
 			{
-				resultProc = DefWindowProc(hWnd, msg, wParam, lParam);
+				retVal = DefWindowProc(hWnd, msg, wParam, lParam);
 			}
 
 			// 特别对 WM_PAINT 消息进行后处理
@@ -1734,9 +2000,11 @@ namespace HiEasyX
 				//DefWindowProc(hWnd, WM_PAINT, 0, 0);
 
 				//printf("\twm_paint\n");
+
+				retVal = 0;
 			}
 
-			return resultProc;
+			return retVal;
 		}
 	}
 
@@ -1780,9 +2048,8 @@ namespace HiEasyX
 		wnd.pCanvas = new Canvas(w, h);
 		wnd.xasp = 1;
 		wnd.yasp = 1;
-		//wnd.pBufferImg = new IMAGE(w, h);
-		//wnd.pBufferImgCanvas = nullptr;
-		//wnd.isNeedFlush = false;
+		wnd.bAutoResizeCanvas = true;
+		memset(wnd.bStylesUsage, 0, sizeof wnd.bStylesUsage);
 		wnd.funcWndProc = WindowProcess;
 		wnd.vecMessage.reserve(MSG_RESERVE_SIZE);
 		wnd.isUseTray = false;
@@ -2093,7 +2360,7 @@ namespace HiEasyX
 		SingleGraphWindow(true);
 
 		HWND wnd = initgraphHX(w, h, flag);
-		EnableResizing(GetHWndHX(), false);
+		SetWindowStyleHX(Resizable, false, wnd);
 
 		return wnd;
 	}
@@ -2275,6 +2542,16 @@ namespace HiEasyX
 		return IsWindowSizeChanged(g_vecWindows[m_nWindowIndex].hWnd);
 	}
 
+	void Window::SetSizeLim(Optional<SIZE> sizeMin, Optional<SIZE> sizeMax)
+	{
+		SetWindowSizeLim(sizeMin, sizeMax, *this);
+	}
+
+	void Window::AutoResizeCanvas(bool enable)
+	{
+		AutoResizeWindowCanvas(enable, *this);
+	}
+
 	void Window::CreateTray(LPCTSTR lpszTrayName)
 	{
 		HiEasyX::CreateTray(lpszTrayName, g_vecWindows[m_nWindowIndex].hWnd);
@@ -2342,6 +2619,21 @@ namespace HiEasyX
 	int Window::SetExStyle(long lNewExStyle)
 	{
 		return SetWindowExStyle(lNewExStyle, g_vecWindows[m_nWindowIndex].hWnd);
+	}
+
+	void Window::SetStyleHX(WindowStyle style, bool bEnable)
+	{
+		SetWindowStyleHX(style, bEnable, *this);
+	}
+
+	bool Window::HasStyleHX(WindowStyle style)
+	{
+		return HasWindowStyleHX(style, *this);
+	}
+
+	void Window::UpdateScrollInfo()
+	{
+		HiEasyX::UpdateScrollInfo(*this);
 	}
 
 	POINT Window::GetPos()
